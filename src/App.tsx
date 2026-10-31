@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import GigsPage from "./pages/Gigs";
-import Home from "./pages/Home";
+import Home, { About } from "./pages/Home";
+import { playlists, spotifyProfileUrl } from "./data/playlists";
+import { Playlists } from "./Playlists";
 import MerchPage from "./pages/Merch";
 import SetsPage from "./pages/Sets";
 import TicketsPage from "./pages/Tickets";
@@ -9,11 +11,12 @@ import Radio, { type RadioTrack } from "./Radio";
 import { useStored, type BagLine } from "./storage";
 
 const NAV = [
-  { to: "/gigs", label: "Gigs", end: true },
-  { to: "/tickets", label: "Tickets", end: false },
-  { to: "/", label: "Playlists", end: true },
-  { to: "/sets", label: "Set lists", end: true },
-  { to: "/merch", label: "Merch", end: true },
+  { to: "/gigs", label: "Gigs" },
+  { to: "/tickets", label: "Tickets" },
+  { to: "/playlists", label: "Playlists" },
+  { to: "/about", label: "About" },
+  { to: "/sets", label: "Set lists" },
+  { to: "/merch", label: "Merch" },
 ] as const;
 
 export default function App() {
@@ -39,7 +42,7 @@ export default function App() {
 
   return (
     <>
-      <Link className="skip" to="/#playlists">
+      <Link className="skip" to="/playlists">
         Skip to playlists
       </Link>
       <header className="site-header" id="top">
@@ -49,23 +52,27 @@ export default function App() {
             <span className="brand-name">
               Tall Paul
               <br />
-              and Jezz
+              <span className="and">and</span> Jezz
             </span>
           </Link>
           <div className="header-tools">
             <nav id="site-nav" className={menuOpen ? "nav-links is-open" : "nav-links"}>
-              {NAV.map((item) => (
-                <NavLink
-                  key={item.label}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) => (isActive ? "is-on" : undefined)}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {item.label}
-                  {item.to === "/merch" && bagCount > 0 ? ` (${bagCount})` : ""}
-                </NavLink>
-              ))}
+              {NAV.map((item) => {
+                const current =
+                  pathname === item.to || (item.to === "/tickets" && pathname.startsWith("/tickets"));
+                return (
+                  <Link
+                    key={item.label}
+                    to={item.to}
+                    className={current ? "is-on" : undefined}
+                    aria-current={current ? "page" : undefined}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {item.label}
+                    {item.to === "/merch" && bagCount > 0 ? ` (${bagCount})` : ""}
+                  </Link>
+                );
+              })}
             </nav>
             <button
               className="menu-btn"
@@ -102,8 +109,29 @@ export default function App() {
             element={
               <Home
                 nowVideoId={nowVideoId}
+                onPlayTrack={(track, startSeconds) => playTrack.current(track, startSeconds)}
+              />
+            }
+          />
+          <Route
+            path="/playlists"
+            element={
+              <Playlists
+                playlists={playlists}
+                profileUrl={spotifyProfileUrl}
+                nowVideoId={nowVideoId}
                 nowSeconds={nowSeconds}
                 onSeek={(seconds) => seekTo.current(seconds)}
+                onPlayTrack={(track, startSeconds) => playTrack.current(track, startSeconds)}
+              />
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <About
+                profileUrl={spotifyProfileUrl}
+                nowVideoId={nowVideoId}
                 onPlayTrack={(track, startSeconds) => playTrack.current(track, startSeconds)}
               />
             }

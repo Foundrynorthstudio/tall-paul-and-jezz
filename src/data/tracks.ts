@@ -66,6 +66,16 @@ export function eachPlaylistTracks(): { playlistId: string; tracks: CrateTrack[]
   }));
 }
 
+export function trackById(id: string): CrateTrack | undefined {
+  const wanted = id.trim();
+  if (!wanted) return undefined;
+  for (const { tracks } of eachPlaylistTracks()) {
+    const found = tracks.find((track) => track.id === wanted);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 export function tracksFor(playlistId: string): CrateTrack[] {
   return (catalog.playlists?.[playlistId] ?? []).flatMap((track) => {
     const id = track.id?.trim();
