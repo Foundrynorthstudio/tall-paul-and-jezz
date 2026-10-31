@@ -13,19 +13,50 @@ export type CrateTrack = {
   appleUrl: string | null;
   youtubeMusicUrl: string | null;
   fieldNote: string;
+  timedNotes: TimedNote[];
 };
 
-type RawTrack = Omit<CrateTrack, "fieldNote">;
+export type TimedNote = { at: number; text: string };
+
+type RawTrack = Omit<CrateTrack, "fieldNote" | "timedNotes">;
 
 type TrackFile = {
   playlists?: Record<string, RawTrack[]>;
 };
 
+type RawNote = string | { at?: unknown; text?: unknown }[];
+
 const catalog = trackFile as TrackFile;
-const notes = notesFile as Record<string, string>;
+const notes = notesFile as Record<string, RawNote>;
+
+function readNotes(note: RawNote | undefined): { fieldNote: string; timedNotes: TimedNote[] } {
+  if (typeof note === "string") return { fieldNote: note.trim(), timedNotes: [] };
+  if (!Array.isArray(note)) return { fieldNote: "", timedNotes: [] };
+  const timedNotes = note.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const at = Number(item.at);
+    const text = typeof item.text === "string" ? item.text.trim() : "";
+    if (!Number.isFinite(at) || at < 0 || !text) return [];
+    return [{ at, text }];
+  });
+  return { fieldNote: "", timedNotes };
+}
 
 export function trackCount(playlistId: string): number {
-  return (catalog.playlists?.[playlistId] ?? []).filter((track) => track.id?.trim()).length;
+  return playlistStats(playlistId).count;
+}
+
+export function playlistStats(playlistId: string): { count: number; durationMs: number } {
+  return (catalog.playlists?.[playlistId] ?? []).reduce(
+    (stats, track) => {
+      if (!track.id?.trim()) return stats;
+      return {
+        count: stats.count + 1,
+        durationMs: stats.durationMs + (Number(track.durationMs) || 0),
+      };
+    },
+    { count: 0, durationMs: 0 },
+  );
 }
 
 export function eachPlaylistTracks(): { playlistId: string; tracks: CrateTrack[] }[] {
@@ -39,7 +70,7 @@ export function tracksFor(playlistId: string): CrateTrack[] {
   return (catalog.playlists?.[playlistId] ?? []).flatMap((track) => {
     const id = track.id?.trim();
     if (!id) return [];
-    const note = notes[id];
+    const { fieldNote, timedNotes } = readNotes(notes[id]);
     return [
       {
         id,
@@ -51,7 +82,8 @@ export function tracksFor(playlistId: string): CrateTrack[] {
         spotifyUrl: track.spotifyUrl?.trim() || `https://open.spotify.com/track/${id}`,
         appleUrl: track.appleUrl?.trim() || null,
         youtubeMusicUrl: track.youtubeMusicUrl?.trim() || null,
-        fieldNote: typeof note === "string" ? note.trim() : "",
+        fieldNote,
+        timedNotes,
       },
     ];
   });

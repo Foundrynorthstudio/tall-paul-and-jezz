@@ -67,11 +67,15 @@ function libraryItems(): RadioTrack[] {
 export default function Radio({
   soundOn,
   playTrack,
+  seekTo,
   onNow,
+  onTime,
 }: {
   soundOn: boolean;
-  playTrack: MutableRefObject<(track: RadioTrack) => void>;
+  playTrack: MutableRefObject<(track: RadioTrack, startSeconds?: number) => void>;
+  seekTo: MutableRefObject<(seconds: number) => void>;
   onNow: (videoId: string) => void;
+  onTime: (seconds: number) => void;
 }) {
   const latestQueue = useMemo(() => latestFirst(duoItems()), []);
   const playlistQueue = useMemo(() => duoItems(), []);
@@ -82,16 +86,26 @@ export default function Radio({
   const frameRef = useRef<HTMLIFrameElement>(null);
   const nowRef = useRef(nowId);
   const ignoreUntil = useRef(0);
+  const pendingStart = useRef<number | null>(null);
+  const armStart = useRef<number | null>(null);
   nowRef.current = nowId;
   const now = queue.find((item) => item.videoId === nowId) ?? queue[0] ?? null;
   const queueKey = `${mode}:${queue.map((item) => item.videoId).join(",")}`;
 
-  playTrack.current = (track) => {
-    if (!track.videoId || track.videoId === nowRef.current) return;
+  playTrack.current = (track, startSeconds) => {
+    if (!track.videoId) return;
+    const start = Math.max(0, startSeconds ?? 0);
+    if (track.videoId === nowRef.current) {
+      if (startSeconds != null) seek(start);
+      return;
+    }
+    pendingStart.current = start;
+    armStart.current = start;
+    ignoreUntil.current = Date.now() + 1500;
     setMode("track");
     setQueue([track]);
     setNowId(track.videoId);
-    setCurrent(0);
+    setCurrent(start);
   };
 
   useEffect(() => {
@@ -99,23 +113,34 @@ export default function Radio({
   }, [nowId, onNow]);
 
   useEffect(() => {
-    setCurrent(0);
+    onTime(current);
+  }, [current, onTime]);
+
+  useEffect(() => {
+    const start = pendingStart.current ?? 0;
+    pendingStart.current = null;
+    setCurrent(start);
   }, [queueKey]);
 
   useEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
-    function apply(target: HTMLIFrameElement) {
+    function apply(target: HTMLIFrameElement, ready = false) {
       armPlayer(target);
       postToPlayer(target, soundOn ? "unMute" : "mute");
       if (soundOn) postToPlayer(target, "playVideo");
+      if (ready && armStart.current != null && armStart.current > 0.25) {
+        ignoreUntil.current = Date.now() + 1200;
+        postToPlayer(target, "seekTo", [armStart.current, true]);
+        armStart.current = null;
+      }
     }
     apply(frame);
     function onMessage(event: MessageEvent) {
       if (event.origin !== "https://www.youtube-nocookie.com") return;
       if (event.source !== frame?.contentWindow) return;
       const data = widgetMessage(event.data);
-      if (data?.event === "onReady") apply(frame);
+      if (data?.event === "onReady") apply(frame, true);
       const info = data?.info;
       if (typeof info === "number" && Number.isFinite(info)) {
         if (Date.now() >= ignoreUntil.current) setCurrent(info);
@@ -144,6 +169,8 @@ export default function Radio({
   }, []);
 
   function load(next: RadioTrack[], nextMode: RadioMode) {
+    pendingStart.current = null;
+    armStart.current = null;
     setMode(nextMode);
     setQueue(next);
     setNowId(next[0]?.videoId ?? "");
@@ -155,6 +182,8 @@ export default function Radio({
     setCurrent(seconds);
     postToPlayer(frameRef.current, "seekTo", [seconds, true]);
   }
+
+  seekTo.current = seek;
 
   const kicker =
     mode === "shuffle"

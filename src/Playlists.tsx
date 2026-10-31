@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { paulPlaylists } from "./data/paul";
 import {
   comparePlaylistNames,
@@ -10,7 +10,8 @@ import {
   type PlaylistMenu,
   type SpotifyPlaylist,
 } from "./data/playlists";
-import { trackCount, tracksFor, type CrateTrack } from "./data/tracks";
+import { playlistStats, tracksFor, type CrateTrack } from "./data/tracks";
+import WaveformSeek from "./WaveformSeek";
 import type { RadioTrack } from "./Radio";
 
 type Person = "jezz" | "paul" | "duo";
@@ -29,16 +30,54 @@ function formatDuration(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+function formatTuneTime(ms: number): string {
+  const total = Math.round(ms / 1000);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  if (hours > 0) return `${hours}h ${minutes.toString().padStart(2, "0")}m`;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function headingStats(count: number, durationMs: number): string {
+  const tracks = `${count} ${count === 1 ? "track" : "tracks"}`;
+  if (!durationMs) return tracks;
+  return `${tracks} · ${formatTuneTime(durationMs)}`;
+}
+
+function onTabKey(event: KeyboardEvent<HTMLDivElement>) {
+  const keys = ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"];
+  if (!keys.includes(event.key)) return;
+  const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  const index = tabs.indexOf(document.activeElement as HTMLButtonElement);
+  if (index < 0) return;
+  event.preventDefault();
+  const next =
+    event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? tabs.length - 1
+        : event.key === "ArrowRight" || event.key === "ArrowDown"
+          ? (index + 1) % tabs.length
+          : (index - 1 + tabs.length) % tabs.length;
+  tabs[next].focus();
+  tabs[next].click();
+}
+
 export function Playlists({
   playlists: rows,
   profileUrl,
   nowVideoId,
+  nowSeconds,
+  onSeek,
   onPlayTrack,
 }: {
   playlists: SpotifyPlaylist[];
   profileUrl: string;
   nowVideoId: string;
-  onPlayTrack: (track: RadioTrack) => void;
+  nowSeconds: number;
+  onSeek: (seconds: number) => void;
+  onPlayTrack: (track: RadioTrack, startSeconds?: number) => void;
 }) {
   const [person, setPerson] = useState<Person>("jezz");
   const [menu, setMenu] = useState<PlaylistMenu>("chill");
@@ -46,8 +85,15 @@ export function Playlists({
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const duo = rows.find((playlist) => playlist.id === DUO_ID) ?? null;
-  const jezzTrackTotal = rows.reduce((sum, playlist) => sum + trackCount(playlist.id), 0);
-  const paulTrackTotal = 0;
+  const duoStats = duo ? playlistStats(duo.id) : { count: 0, durationMs: 0 };
+  const jezzStats = rows.reduce(
+    (stats, playlist) => {
+      const next = playlistStats(playlist.id);
+      return { count: stats.count + next.count, durationMs: stats.durationMs + next.durationMs };
+    },
+    { count: 0, durationMs: 0 },
+  );
+  const paulStats = { count: 0, durationMs: 0 };
   const needle = playlistNameKey(query);
   const grouped = person === "duo" && duo ? [duo] : sortedMenu(rows, menu);
   const visible =
@@ -75,8 +121,8 @@ export function Playlists({
         <p className="kicker">Crates</p>
         <h2 className="section-title">Playlists</h2>
         <p className="lede">
-          Jezz builds his crates on Spotify. Paul will build his on YouTube Music. Every track can
-          open on either service.
+          This is where Jezz and Paul curate the crates. Fifty tracks apiece, and the best rise to
+          the top of the joint set. Jezz builds his on Spotify. Paul builds his on YouTube Music.
           {profileUrl ? (
             <>
               {" "}
@@ -104,9 +150,15 @@ export function Playlists({
                 setActiveId(DUO_ID);
               }}
             >
-              Paul and Jezz
+              <span className="duo-name">Paul and Jezz</span>
+              <span className="duo-meta">Joint set · {headingStats(duoStats.count, duoStats.durationMs)}</span>
             </button>
-            <div className="playlist-menu person-menu" role="tablist" aria-label="Whose crates">
+            <div
+              className="playlist-menu person-menu"
+              role="tablist"
+              aria-label="Whose crates"
+              onKeyDown={onTabKey}
+            >
               <button
                 type="button"
                 role="tab"
@@ -114,8 +166,8 @@ export function Playlists({
                 className={person === "jezz" ? "is-on" : ""}
                 onClick={showJezz}
               >
-                Jezz
-                <span className="menu-count">{jezzTrackTotal}</span>
+                <span className="menu-label">Jezz</span>
+                <span className="menu-meta">{headingStats(jezzStats.count, jezzStats.durationMs)}</span>
               </button>
               <button
                 type="button"
@@ -124,8 +176,8 @@ export function Playlists({
                 className={person === "paul" ? "is-on" : ""}
                 onClick={() => setPerson("paul")}
               >
-                Paul
-                <span className="menu-count">{paulTrackTotal}</span>
+                <span className="menu-label">Paul</span>
+                <span className="menu-meta">{headingStats(paulStats.count, paulStats.durationMs)}</span>
               </button>
             </div>
             {person === "paul" ? (
@@ -134,9 +186,9 @@ export function Playlists({
               <>
                 {person === "jezz" ? (
                   <>
-                    <div className="playlist-menu" role="tablist" aria-label="Playlist groups">
+                    <div className="playlist-menu" role="tablist" aria-label="Playlist groups" onKeyDown={onTabKey}>
                       {playlistMenus.map((item) => {
-                        const count = rows.filter((playlist) => inPlaylistMenu(playlist, item.id)).length;
+                        const crates = rows.filter((playlist) => inPlaylistMenu(playlist, item.id)).length;
                         return (
                           <button
                             key={item.id}
@@ -146,8 +198,10 @@ export function Playlists({
                             className={menu === item.id ? "is-on" : ""}
                             onClick={() => chooseMenu(item.id)}
                           >
-                            {item.label}
-                            <span className="menu-count">{count}</span>
+                            <span className="menu-label">{item.label}</span>
+                            <span className="menu-meta">
+                              {crates} {crates === 1 ? "playlist" : "playlists"}
+                            </span>
                           </button>
                         );
                       })}
@@ -169,6 +223,7 @@ export function Playlists({
                   ) : (
                     visible.map((playlist) => {
                       const open = playlist.id === activeId;
+                      const stats = playlistStats(playlist.id);
                       return (
                         <div key={playlist.id} className={open ? "crate is-open" : "crate"}>
                           <button
@@ -179,14 +234,20 @@ export function Playlists({
                           >
                             <span className="plist-line">
                               <span className="plist-name">{playlist.name}</span>
-                              <span className="plist-count">{trackCount(playlist.id)}</span>
+                              <span className="plist-count">{headingStats(stats.count, stats.durationMs)}</span>
                             </span>
                             {playlist.description ? (
                               <span className="plist-desc">{playlist.description}</span>
                             ) : null}
                           </button>
                           {open ? (
-                            <CratePanel playlist={playlist} nowVideoId={nowVideoId} onPlayTrack={onPlayTrack} />
+                            <CratePanel
+                              playlist={playlist}
+                              nowVideoId={nowVideoId}
+                              nowSeconds={nowSeconds}
+                              onSeek={onSeek}
+                              onPlayTrack={onPlayTrack}
+                            />
                           ) : null}
                         </div>
                       );
@@ -228,25 +289,33 @@ function PaulCrates() {
 function CratePanel({
   playlist,
   nowVideoId,
+  nowSeconds,
+  onSeek,
   onPlayTrack,
 }: {
   playlist: SpotifyPlaylist;
   nowVideoId: string;
-  onPlayTrack: (track: RadioTrack) => void;
+  nowSeconds: number;
+  onSeek: (seconds: number) => void;
+  onPlayTrack: (track: RadioTrack, startSeconds?: number) => void;
 }) {
   const tracks = tracksFor(playlist.id);
 
-  function play(track: CrateTrack) {
-    const videoId = youtubeVideoId(track.youtubeMusicUrl);
-    if (!videoId) return;
-    onPlayTrack({
+  function radioTrack(track: CrateTrack, videoId: string): RadioTrack {
+    return {
       videoId,
       title: track.title,
       artists: track.artists,
       artwork: track.artwork,
       crate: playlist.name,
       durationMs: track.durationMs,
-    });
+    };
+  }
+
+  function play(track: CrateTrack, startSeconds?: number) {
+    const videoId = youtubeVideoId(track.youtubeMusicUrl);
+    if (!videoId) return;
+    onPlayTrack(radioTrack(track, videoId), startSeconds);
   }
 
   return (
@@ -263,7 +332,9 @@ function CratePanel({
               key={`${track.id}-${index}`}
               track={track}
               active={nowVideoId !== "" && youtubeVideoId(track.youtubeMusicUrl) === nowVideoId}
-              onPlay={() => play(track)}
+              nowSeconds={nowSeconds}
+              onSeek={onSeek}
+              onPlay={(startSeconds) => play(track, startSeconds)}
             />
           ))}
         </div>
@@ -309,17 +380,22 @@ function parseWidget(data: string): unknown {
 function TrackTile({
   track,
   active,
+  nowSeconds,
+  onSeek,
   onPlay,
 }: {
   track: CrateTrack;
   active: boolean;
-  onPlay: () => void;
+  nowSeconds: number;
+  onSeek: (seconds: number) => void;
+  onPlay: (startSeconds?: number) => void;
 }) {
   const videoId = youtubeVideoId(track.youtubeMusicUrl);
   const duration = formatDuration(track.durationMs);
+  const seconds = track.durationMs > 0 ? track.durationMs / 1000 : 0;
   return (
     <article className={active ? "track-tile is-on" : "track-tile"}>
-      <button type="button" className="track-play" onClick={onPlay}>
+      <button type="button" className="track-play" onClick={() => onPlay()}>
         {track.artwork ? (
           <img className="track-cover" src={track.artwork} alt="" />
         ) : (
@@ -331,13 +407,25 @@ function TrackTile({
           {duration ? <span className="track-duration">{duration}</span> : null}
         </span>
       </button>
+      <WaveformSeek
+        videoId={videoId || track.id}
+        currentTime={active ? nowSeconds : 0}
+        duration={seconds}
+        onSeek={(at) => {
+          if (!videoId) return;
+          if (active) onSeek(at);
+          else onPlay(at);
+        }}
+        notes={track.timedNotes}
+        followPlayhead={active}
+      />
       <div className="track-services">
         <a href={track.spotifyUrl} target="_blank" rel="noreferrer">
           Spotify
         </a>
         <span aria-disabled="true">Apple</span>
         {videoId ? (
-          <button type="button" className={active ? "is-on" : ""} aria-pressed={active} onClick={onPlay}>
+          <button type="button" className={active ? "is-on" : ""} aria-pressed={active} onClick={() => onPlay()}>
             YouTube
           </button>
         ) : (

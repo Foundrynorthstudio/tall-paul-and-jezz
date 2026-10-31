@@ -22,7 +22,9 @@ export default function App() {
   const [bag, setBag] = useStored<BagLine[]>("tpj-bag", []);
   const [soundOn, setSoundOn] = useState(true);
   const [nowVideoId, setNowVideoId] = useState("");
-  const playTrack = useRef<(track: RadioTrack) => void>(() => {});
+  const [nowSeconds, setNowSeconds] = useState(0);
+  const playTrack = useRef<(track: RadioTrack, startSeconds?: number) => void>(() => {});
+  const seekTo = useRef<(seconds: number) => void>(() => {});
   const { pathname, hash } = useLocation();
   const bagCount = bag.reduce((sum, line) => sum + line.qty, 0);
 
@@ -85,14 +87,27 @@ export default function App() {
             </button>
           </div>
         </div>
-        <Radio soundOn={soundOn} playTrack={playTrack} onNow={setNowVideoId} />
+        <Radio
+          soundOn={soundOn}
+          playTrack={playTrack}
+          seekTo={seekTo}
+          onNow={setNowVideoId}
+          onTime={setNowSeconds}
+        />
       </header>
 
       <main>
         <Routes>
           <Route
             path="/"
-            element={<Home nowVideoId={nowVideoId} onPlayTrack={(track) => playTrack.current(track)} />}
+            element={
+              <Home
+                nowVideoId={nowVideoId}
+                nowSeconds={nowSeconds}
+                onSeek={(seconds) => seekTo.current(seconds)}
+                onPlayTrack={(track, startSeconds) => playTrack.current(track, startSeconds)}
+              />
+            }
           />
           <Route path="/gigs" element={<GigsPage />} />
           <Route path="/tickets" element={<Navigate to={`/tickets/${nextGig().id}`} replace />} />
