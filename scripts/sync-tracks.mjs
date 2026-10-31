@@ -302,6 +302,60 @@ const clientId = process.env.SPOTIFY_CLIENT_ID || "";
 const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || "";
 const youtubeKey = process.env.YOUTUBE_API_KEY || "";
 const previous = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : { playlists: {} };
+
+if (process.argv.includes("--youtube-only")) {
+  if (!youtubeKey) {
+    console.error("No YOUTUBE_API_KEY. Saved links were left as they are.");
+    process.exit(1);
+  }
+  const playlists = previous.playlists ?? {};
+  const youtubeCache = new Map();
+  for (const tracks of Object.values(playlists)) {
+    for (const track of tracks ?? []) {
+      if (track?.id && track.youtubeMusicUrl && !youtubeCache.has(track.id)) {
+        youtubeCache.set(track.id, track.youtubeMusicUrl);
+      }
+    }
+  }
+  const writeTracks = () => writeFileSync(OUT, `${JSON.stringify({ playlists }, null, 2)}\n`);
+  let youtubeOpen = true;
+  let youtubeFound = 0;
+  let looked = 0;
+  for (const tracks of Object.values(playlists)) {
+    for (const track of tracks ?? []) {
+      if (!track?.id) continue;
+      const cached = youtubeCache.get(track.id);
+      if (cached) {
+        track.youtubeMusicUrl = cached;
+        continue;
+      }
+      if (track.youtubeMusicUrl || !youtubeOpen) continue;
+      looked += 1;
+      try {
+        const url = await youtubeMusicUrl(youtubeKey, track.artists, track.title);
+        if (url) {
+          youtubeCache.set(track.id, url);
+          track.youtubeMusicUrl = url;
+          youtubeFound += 1;
+          if (youtubeFound % 20 === 0) {
+            writeTracks();
+            console.log(`YouTube links saved: ${youtubeFound}`);
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.warn(String(error.message || error).replace(/key=[^&\s]+/g, "key=redacted"));
+        if (error.stop) {
+          youtubeOpen = false;
+          console.warn("Stopping YouTube lookups after that error. Earlier matches are kept.");
+        }
+      }
+    }
+  }
+  writeTracks();
+  console.log(`YouTube links added: ${youtubeFound}. Searches: ${looked}.`);
+  process.exit(0);
+}
 const priorById = new Map();
 for (const rows of Object.values(previous.playlists ?? {})) {
   for (const row of rows ?? []) {

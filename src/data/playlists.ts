@@ -77,9 +77,6 @@ export const VIBE_IDS = new Set([
   "0yWF51vuYx4SGinnl6mcRj",
 ]);
 
-/** Chill Vibe 01 and Vibe 01 stay on Key as well as their own menus. */
-const VIBE_KEY_IDS = new Set([CHILL_ID, "7MWAESjCIBOHcoTN8vssCS"]);
-
 export const HARDER_ID = "0cfpHzBak520bKWPZ0WC0g";
 
 /** Techno and Techno 02, pinned by id so a title change cannot drop them. */
@@ -89,29 +86,10 @@ const HARDEST_IDS = new Set(["11jr4LwhvPyxIWoXuPZuGB", "1SIjBFgf2R23VJF9fn0zPz"]
 export const DUO_ID = "3edR4o6bZ40CIgM2BRZqmv";
 
 const KEY_NAMES = new Set([
-  "jezz and tall paul",
-  "jezz harder faster 01",
-  "dj list",
-  "techno",
-  "techno 02",
-  "d&b",
-  "disco 01",
-  "beats 01",
-  "game of the day",
-  "synth chill",
-  "nu indie",
-  "vibes",
-  "vibes 02",
   "shegra vibes",
-  "americana",
-  "daves picks",
   "dave's irish bangers",
-  "matheo's banging beats",
-  "classic indie",
-  "indie",
-  "indie pop",
-  "buy",
-  "radio tuned",
+  "beats for the car",
+  "daves picks",
 ]);
 
 export function playlistNameKey(name: string): string {
@@ -168,7 +146,7 @@ export function inPlaylistMenu(
   const vibe = VIBE_IDS.has(playlist.id);
   const harder = playlist.id === HARDER_ID || key.includes("harder faster");
   const hardest = HARDEST_IDS.has(playlist.id);
-  const featured = KEY_NAMES.has(key) || VIBE_KEY_IDS.has(playlist.id) || playlist.id === HARDER_ID;
+  const featured = KEY_NAMES.has(key);
   if (menu === "all") return true;
   if (menu === "chill") return chill;
   if (menu === "vibe") return vibe;

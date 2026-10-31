@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { nextGig } from "./data/gigs";
 import GigsPage from "./pages/Gigs";
 import Home from "./pages/Home";
 import MerchPage from "./pages/Merch";
@@ -110,8 +109,8 @@ export default function App() {
             }
           />
           <Route path="/gigs" element={<GigsPage />} />
-          <Route path="/tickets" element={<Navigate to={`/tickets/${nextGig().id}`} replace />} />
-          <Route path="/tickets/:city" element={<TicketsPage />} />
+          <Route path="/tickets" element={<TicketsPage />} />
+          <Route path="/tickets/:city" element={<Navigate to="/tickets" replace />} />
           <Route path="/sets" element={<SetsPage />} />
           <Route path="/merch" element={<MerchPage bag={bag} setBag={setBag} />} />
           <Route path="*" element={<Navigate to="/" replace />} />

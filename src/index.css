@@ -79,6 +79,15 @@ h1, h2, h3 { font-weight: 400; }
   font-size: 1.12rem;
 }
 
+.tbc {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  line-height: 0.9;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .site-header {
   position: sticky;
   top: 0;
