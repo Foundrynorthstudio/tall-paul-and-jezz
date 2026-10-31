@@ -19,7 +19,7 @@ export default function Home({
         <div className="hero-stage">
           <img
             className="hero-art"
-            src="/brand/hero.png"
+            src="/brand/hero.jpg"
             alt="Tall Paul and Jezz, two silhouettes in headphones."
           />
           <div className="hero-copy">

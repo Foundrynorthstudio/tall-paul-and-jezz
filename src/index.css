@@ -302,7 +302,7 @@ h1, h2, h3 { font-weight: 400; }
 
 .hero-stage {
   position: relative;
-  width: min(1120px, calc(100% - 2.5rem));
+  width: min(640px, calc(100% - 2.5rem));
   margin-inline: auto;
 }
 
@@ -317,9 +317,18 @@ h1, h2, h3 { font-weight: 400; }
 .hero-copy {
   position: absolute;
   z-index: 1;
-  left: 8%;
-  bottom: 8%;
-  max-width: 28%;
+  left: 5%;
+  bottom: 4%;
+  max-width: 52%;
+}
+
+.hero-copy .wordmark {
+  font-size: clamp(4.2rem, 8vw, 6.4rem);
+}
+
+.hero-copy .tour-label {
+  margin-top: 0.25rem;
+  font-size: clamp(2.6rem, 4.5vw, 3.8rem);
 }
 
 .hero-foot { padding-top: 1.15rem; }
@@ -1151,7 +1160,12 @@ input[type="search"] {
 
   .wordmark .and { color: var(--red); }
 
-  .hero-copy .tour-label { color: var(--red); }
+  .hero-copy .wordmark { font-size: clamp(2.7rem, 12vw, 4.4rem); }
+
+  .hero-copy .tour-label {
+    color: var(--red);
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
 
   :root { --header-offset: 22rem; }
 
