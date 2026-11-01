@@ -158,13 +158,26 @@ export function About({
   );
 }
 
-const GLYDER_ID = "5NRVtFHFos3aLTC4FhoHmP";
 const CHANGE_ID = "6dMZduF6Qs2WiSzQs7gqk5";
 const RIP_IT_UP_ID = "0rivtQllV53TOaMlPIkKsx";
 const NEVER_B_MINE_ID = "0bp1n629hFdAlF6CMl4WnD";
 const CRAVE_YOU_ID = "5mdzg7ZwebXNb90LPRusAs";
 const FLYING_AWAY_ID = "0GxkWCaowNJxbaCdrcAPFe";
 const HEAVEN_ID = "030VTvfbjjn3Lnrif6tLcy";
+
+const SPACE_COWBOY: CrateTrack = {
+  id: "4SauVG68Oqmznmm04IQ0rm",
+  isrc: "GBBBL9500001",
+  title: "Space Cowboy (Classic Radio)",
+  artists: "Jamiroquai, David Morales",
+  durationMs: 243913,
+  artwork: "https://i.scdn.co/image/ab67616d00001e02449878b23d93b2772906f48c",
+  spotifyUrl: "https://open.spotify.com/track/4SauVG68Oqmznmm04IQ0rm",
+  appleUrl: null,
+  youtubeMusicUrl: "https://music.youtube.com/watch?v=IV8ujbsIJgk",
+  fieldNote: "",
+  timedNotes: [],
+};
 
 const BE_YOUR_GIRL: CrateTrack = {
   id: "3zp3Mq8krAb1067UL94zJq",
@@ -205,7 +218,7 @@ function jezzTopTen(): (CrateTrack | null)[] {
   const crave = trackById(CRAVE_YOU_ID);
   const slots: (CrateTrack | null)[] = [
     trackById(weekTrackIds.jezz) ?? null,
-    trackById(GLYDER_ID) ?? null,
+    SPACE_COWBOY,
     BE_YOUR_GIRL,
     trackById(CHANGE_ID) ?? null,
     trackById(RIP_IT_UP_ID) ?? null,

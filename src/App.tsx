@@ -5,19 +5,18 @@ import Home, { About } from "./pages/Home";
 import { playlists, spotifyProfileUrl } from "./data/playlists";
 import { Playlists } from "./Playlists";
 import MerchPage from "./pages/Merch";
-import SetsPage from "./pages/Sets";
 import TicketsPage from "./pages/Tickets";
 import WeekPage from "./pages/Week";
 import Radio, { type RadioTrack } from "./Radio";
 import { useStored, type BagLine } from "./storage";
 
 const NAV = [
-  { to: "/gigs", label: "Gigs" },
-  { to: "/playlists", label: "Playlists" },
-  { to: "/week", label: "Tracks of the week" },
-  { to: "/about", label: "About" },
-  { to: "/sets", label: "Set lists" },
-  { to: "/merch", label: "Merch" },
+  { to: "/playlists", label: "Playlists", outside: false },
+  { to: "/week", label: "Tracks of the week", outside: false },
+  { to: "/about", label: "About", outside: false },
+  { to: "/sets/", label: "Set lists", outside: true },
+  { to: "/gigs", label: "Gigs", outside: false },
+  { to: "/merch", label: "Merch", outside: false },
 ] as const;
 
 export default function App() {
@@ -52,7 +51,7 @@ export default function App() {
       <header className="site-header" id="top">
         <div className="wrap header-inner">
           <Link className="brand" to="/" onClick={() => setMenuOpen(false)}>
-            <img src="/brand/logo-mark.jpg" alt="" />
+            <img src="/brand/logo-header.jpg" alt="" />
             <span className="brand-name">
               Tall Paul
               <br />
@@ -63,6 +62,14 @@ export default function App() {
             <nav id="site-nav" className={menuOpen ? "nav-links is-open" : "nav-links"}>
               {NAV.map((item) => {
                 const current = pathname === item.to;
+                const label = `${item.label}${item.to === "/merch" && bagCount > 0 ? ` (${bagCount})` : ""}`;
+                if (item.outside) {
+                  return (
+                    <a key={item.label} href={item.to} onClick={() => setMenuOpen(false)}>
+                      {label}
+                    </a>
+                  );
+                }
                 return (
                   <Link
                     key={item.label}
@@ -71,8 +78,7 @@ export default function App() {
                     aria-current={current ? "page" : undefined}
                     onClick={() => setMenuOpen(false)}
                   >
-                    {item.label}
-                    {item.to === "/merch" && bagCount > 0 ? ` (${bagCount})` : ""}
+                    {label}
                   </Link>
                 );
               })}
@@ -156,7 +162,6 @@ export default function App() {
           <Route path="/gigs" element={<GigsPage />} />
           <Route path="/tickets" element={<TicketsPage />} />
           <Route path="/tickets/:city" element={<Navigate to="/tickets" replace />} />
-          <Route path="/sets" element={<SetsPage />} />
           <Route path="/merch" element={<MerchPage bag={bag} setBag={setBag} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

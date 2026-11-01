@@ -73,6 +73,12 @@ export function beatportSearchUrl(track: CrateTrack): string {
   return `https://www.beatport.com/search?q=${encodeURIComponent(query)}`;
 }
 
+export type PlayingAnalysis = {
+  bpm: number;
+  key: string;
+  genre: string;
+};
+
 export type SetStep = {
   track: CrateTrack;
   reason: string;
@@ -84,17 +90,60 @@ export type SetPlan = {
   held: CrateTrack[];
 };
 
-export function suggestSet(tracks: CrateTrack[]): SetPlan {
+export function camelotCode(key: string): string {
+  const found = camelotOf(key);
+  return found ? `${found.number}${found.letter}` : "";
+}
+
+export function harmonicNote(
+  from: PlayingAnalysis,
+  to: PlayingAnalysis,
+): { fits: boolean; text: string } | null {
+  const start = camelotOf(from.key);
+  const next = camelotOf(to.key);
+  if (!start || !next || !(from.bpm > 0) || !(to.bpm > 0)) return null;
+  const distance = wheelDistance(start, next);
+  const delta = to.bpm - from.bpm;
+  const fits = distance <= 1 && Math.abs(delta) <= 6;
+  if (!fits) {
+    const parts: string[] = [];
+    if (distance > 1) parts.push("Breaks the wheel");
+    if (Math.abs(delta) > 6) parts.push(delta > 0 ? `tempo up ${Math.round(delta)}` : `tempo down ${Math.round(Math.abs(delta))}`);
+    return { fits: false, text: parts.join(", ") };
+  }
+  return {
+    fits: true,
+    text: stepReason(
+      { camelot: start, bpm: from.bpm, genre: from.genre },
+      { camelot: next, bpm: to.bpm, genre: to.genre },
+    ),
+  };
+}
+
+export function suggestSet(
+  tracks: CrateTrack[],
+  analysis: Record<string, PlayingAnalysis> = {},
+  options?: { openerId?: string; targetMs?: number },
+): SetPlan {
+  const openerId = options?.openerId ?? "";
+  const targetMs = options?.targetMs && options.targetMs > 0 ? options.targetMs : HOUR_MS;
   const unplaced: CrateTrack[] = [];
   const ready: { track: CrateTrack; camelot: Camelot; bpm: number; genre: string }[] = [];
   for (const track of tracks) {
-    const match = beatportMatches[track.id];
-    const camelot = match ? camelotOf(match.key) : null;
-    if (!match || !camelot || !(match.bpm > 0)) {
+    const row = analysis[track.id];
+    const camelot = row ? camelotOf(row.key) : null;
+    if (!row || !camelot || !(row.bpm > 0)) {
       unplaced.push(track);
       continue;
     }
-    ready.push({ track, camelot, bpm: match.bpm, genre: match.genre });
+    ready.push({ track, camelot, bpm: row.bpm, genre: row.genre });
+  }
+  if (openerId) {
+    const index = ready.findIndex((item) => item.track.id === openerId);
+    if (index > 0) {
+      const [pinned] = ready.splice(index, 1);
+      ready.unshift(pinned);
+    }
   }
   if (ready.length === 0) return { steps: [], unplaced, held: [] };
 
@@ -103,7 +152,7 @@ export function suggestSet(tracks: CrateTrack[]): SetPlan {
   const remaining = ready.slice(1);
   let played = cursor.track.durationMs;
 
-  while (remaining.length > 0 && played < HOUR_MS) {
+  while (remaining.length > 0 && played < targetMs) {
     let best = -1;
     let bestScore = Number.POSITIVE_INFINITY;
     for (let index = 0; index < remaining.length; index += 1) {

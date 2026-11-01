@@ -46,7 +46,7 @@ export default function MerchPage({
   return (
     <section className="block">
       <div className="wrap">
-        <p className="kicker">Prints and a tee</p>
+        <p className="kicker">Prints and clothes</p>
         <h1 className="section-title">Merch</h1>
         <p className="lede">
           Prices in pounds. The till is not taking payment yet. The bag stays in this browser.

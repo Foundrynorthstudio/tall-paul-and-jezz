@@ -16,6 +16,7 @@ import {
   type PlaylistMenu,
   type SpotifyPlaylist,
 } from "./data/playlists";
+import { beatportSearchUrl } from "./data/beatport";
 import { playlistStats, tracksFor, type CrateTrack } from "./data/tracks";
 import { weekFeature, type WeekFeature, type WeekSlot } from "./data/week";
 import WaveformSeek from "./WaveformSeek";
@@ -708,6 +709,7 @@ function WeekPlaylistCard({
             </div>
           </div>
         ) : null}
+        {open ? <ServiceRow track={track} active={playing} onPlay={() => play()} /> : null}
         {playlist && stats ? (
           <button
             type="button"
@@ -1267,6 +1269,9 @@ function ServiceRow({
       ) : (
         <span aria-disabled="true">YouTube</span>
       )}
+      <a href={beatportSearchUrl(track)} target="_blank" rel="noreferrer">
+        Beatport
+      </a>
     </div>
   );
 }

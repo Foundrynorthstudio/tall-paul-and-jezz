@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { beatportSearchUrl } from "../data/beatport";
 import { paulPlaylists } from "../data/paul";
 import { DUO_NAME, DUO_WEEK_ID, JEZZ_WEEK_ID, playlists, youtubeVideoId } from "../data/playlists";
 import { tracksFor, type CrateTrack } from "../data/tracks";
@@ -201,6 +202,9 @@ function PickBody({
         ) : (
           <span aria-disabled="true">YouTube</span>
         )}
+        <a href={beatportSearchUrl(track)} target="_blank" rel="noreferrer">
+          Beatport
+        </a>
       </div>
       <PlaylistButton slot={pick.slot} />
       <div className="week-field">
