@@ -85,6 +85,22 @@ const HARDEST_IDS = new Set(["11jr4LwhvPyxIWoXuPZuGB", "1SIjBFgf2R23VJF9fn0zPz"]
 /** Shared site playlist, Jezz and Tall Paul. */
 export const DUO_ID = "3edR4o6bZ40CIgM2BRZqmv";
 
+/** Highest numbered Vibe crate, so a new Vibe 08 becomes the latest on its own. */
+export function latestVibe(): SpotifyPlaylist | null {
+  let best: SpotifyPlaylist | null = null;
+  let bestNumber = -1;
+  for (const playlist of playlists) {
+    if (!VIBE_IDS.has(playlist.id)) continue;
+    const match = playlist.name.match(/(\d+)/);
+    const number = match ? Number(match[1]) : -1;
+    if (number > bestNumber) {
+      bestNumber = number;
+      best = playlist;
+    }
+  }
+  return best;
+}
+
 const KEY_NAMES = new Set([
   "shegra vibes",
   "dave's irish bangers",
@@ -113,7 +129,7 @@ export function youtubeEmbed(videoId: string): string {
 }
 
 /** One on-site player for a whole crate. `loop` restarts after the last video. */
-export function youtubePlaylistEmbed(videoIds: string[], origin?: string): string {
+export function youtubePlaylistEmbed(videoIds: string[], origin?: string, muted = false): string {
   const ids = videoIds.filter(Boolean);
   const first = ids[0];
   if (!first) return "";
@@ -125,6 +141,7 @@ export function youtubePlaylistEmbed(videoIds: string[], origin?: string): strin
     enablejsapi: "1",
     playlist: ids.join(","),
   });
+  if (muted) params.set("mute", "1");
   if (origin) params.set("origin", origin);
   return `https://www.youtube-nocookie.com/embed/${first}?${params}`;
 }

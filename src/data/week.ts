@@ -7,14 +7,39 @@ export const weekTrackIds = {
   paul: "0fOmDYu6WE8hKwMlYPZpal",
 } as const;
 
-export type WeekPerson = keyof typeof weekTrackIds;
+/** Jezz and Paul track of the week. The radio opens on this. */
+export const duoWeekTrackId = "6PHbD1AEcL1eCsQz3om9CJ";
 
-const labels: Record<WeekPerson, string> = {
+export type WeekPerson = keyof typeof weekTrackIds;
+export type WeekSlot = "duo" | WeekPerson;
+
+const labels: Record<WeekSlot, string> = {
+  duo: "Jezz and Paul",
   jezz: "Jezz",
   paul: "Paul",
 };
 
 const order: WeekPerson[] = ["paul", "jezz"];
+
+const pageOrder: { slot: WeekSlot; id: string }[] = [
+  { slot: "duo", id: duoWeekTrackId },
+  { slot: "paul", id: weekTrackIds.paul },
+  { slot: "jezz", id: weekTrackIds.jezz },
+];
+
+/** Written later. An empty note hides the paragraph and keeps the heading. */
+export const weekNotes: Record<WeekSlot, string> = {
+  duo: "",
+  paul: "",
+  jezz: "",
+};
+
+/** A real listen-through link replaces Coming soon. No invented URL. */
+export const weekPodcasts: Record<WeekSlot, string | null> = {
+  duo: null,
+  paul: null,
+  jezz: null,
+};
 
 export type WeekPick = {
   person: WeekPerson;
@@ -23,18 +48,56 @@ export type WeekPick = {
   track: CrateTrack;
 };
 
-export function weekPicks(): WeekPick[] {
+export type WeekFeature = {
+  slot: WeekSlot;
+  label: string;
+  crate: string;
+  track: CrateTrack;
+  note: string;
+  podcastUrl: string | null;
+};
+
+function catalog(): Map<string, { track: CrateTrack; playlistId: string }> {
   const found = new Map<string, { track: CrateTrack; playlistId: string }>();
   for (const { playlistId, tracks } of eachPlaylistTracks()) {
     for (const track of tracks) {
       if (!found.has(track.id)) found.set(track.id, { track, playlistId });
     }
   }
+  return found;
+}
+
+function pickFrom(
+  found: Map<string, { track: CrateTrack; playlistId: string }>,
+  slot: WeekSlot,
+  id: string,
+): WeekFeature | null {
+  const match = id.trim() ? found.get(id.trim()) : undefined;
+  if (!match) return null;
+  const crate = playlists.find((row) => row.id === match.playlistId)?.name ?? "";
+  return {
+    slot,
+    label: labels[slot],
+    crate,
+    track: match.track,
+    note: weekNotes[slot].trim(),
+    podcastUrl: weekPodcasts[slot],
+  };
+}
+
+export function weekPicks(): WeekPick[] {
+  const found = catalog();
   return order.flatMap((person) => {
-    const id = weekTrackIds[person].trim();
-    const match = id ? found.get(id) : undefined;
-    if (!match) return [];
-    const crate = playlists.find((row) => row.id === match.playlistId)?.name ?? "";
-    return [{ person, label: labels[person], crate, track: match.track }];
+    const feature = pickFrom(found, person, weekTrackIds[person]);
+    if (!feature) return [];
+    return [{ person, label: feature.label, crate: feature.crate, track: feature.track }];
+  });
+}
+
+export function weekFeature(): WeekFeature[] {
+  const found = catalog();
+  return pageOrder.flatMap((item) => {
+    const feature = pickFrom(found, item.slot, item.id);
+    return feature ? [feature] : [];
   });
 }

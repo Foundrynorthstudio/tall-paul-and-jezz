@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { DUO_ID, playlists, youtubePlaylistEmbed, youtubeVideoId } from "./data/playlists";
-import { eachPlaylistTracks, tracksFor } from "./data/tracks";
+import { eachPlaylistTracks, trackById, tracksFor } from "./data/tracks";
+import { duoWeekTrackId } from "./data/week";
 import { armPlayer, postToPlayer, widgetMessage } from "./Playlists";
 import WaveformSeek from "./WaveformSeek";
 
@@ -33,9 +34,12 @@ function duoItems(): RadioTrack[] {
   });
 }
 
-function latestFirst(items: RadioTrack[]): RadioTrack[] {
-  if (items.length < 2) return items;
-  return [items[items.length - 1], ...items.slice(0, -1)];
+function weekFirst(items: RadioTrack[]): RadioTrack[] {
+  const videoId = youtubeVideoId(trackById(duoWeekTrackId)?.youtubeMusicUrl ?? null);
+  if (!videoId) return items;
+  const index = items.findIndex((item) => item.videoId === videoId);
+  if (index <= 0) return items;
+  return [items[index], ...items.filter((_, itemIndex) => itemIndex !== index)];
 }
 
 function libraryItems(): RadioTrack[] {
@@ -68,27 +72,37 @@ export default function Radio({
   soundOn,
   playTrack,
   seekTo,
+  applySound,
+  onSoundBlocked,
   onNow,
   onTime,
 }: {
   soundOn: boolean;
   playTrack: MutableRefObject<(track: RadioTrack, startSeconds?: number) => void>;
   seekTo: MutableRefObject<(seconds: number) => void>;
+  applySound: MutableRefObject<(on: boolean) => void>;
+  onSoundBlocked: () => void;
   onNow: (videoId: string) => void;
   onTime: (seconds: number) => void;
 }) {
-  const latestQueue = useMemo(() => latestFirst(duoItems()), []);
+  const latestQueue = useMemo(() => weekFirst(duoItems()), []);
   const playlistQueue = useMemo(() => duoItems(), []);
   const [mode, setMode] = useState<RadioMode>("latest");
   const [queue, setQueue] = useState(latestQueue);
   const [nowId, setNowId] = useState(latestQueue[0]?.videoId ?? "");
   const [current, setCurrent] = useState(0);
+  const [forcedMute, setForcedMute] = useState(false);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const nowRef = useRef(nowId);
   const ignoreUntil = useRef(0);
   const pendingStart = useRef<number | null>(null);
   const armStart = useRef<number | null>(null);
+  const progressed = useRef(false);
+  const nudged = useRef(false);
+  const nudgeAt = useRef(0);
+  const onSoundBlockedRef = useRef(onSoundBlocked);
   nowRef.current = nowId;
+  onSoundBlockedRef.current = onSoundBlocked;
   const now = queue.find((item) => item.videoId === nowId) ?? queue[0] ?? null;
   const queueKey = `${mode}:${queue.map((item) => item.videoId).join(",")}`;
 
@@ -128,7 +142,7 @@ export default function Radio({
     function apply(target: HTMLIFrameElement, ready = false) {
       armPlayer(target);
       postToPlayer(target, soundOn ? "unMute" : "mute");
-      if (soundOn) postToPlayer(target, "playVideo");
+      postToPlayer(target, "playVideo");
       if (ready && armStart.current != null && armStart.current > 0.25) {
         ignoreUntil.current = Date.now() + 1200;
         postToPlayer(target, "seekTo", [armStart.current, true]);
@@ -142,8 +156,12 @@ export default function Radio({
       const data = widgetMessage(event.data);
       if (data?.event === "onReady") apply(frame, true);
       const info = data?.info;
+      if (data?.event === "onStateChange" && info === 1) progressed.current = true;
       if (typeof info === "number" && Number.isFinite(info)) {
-        if (Date.now() >= ignoreUntil.current) setCurrent(info);
+        if (data?.event !== "onStateChange" && Date.now() >= ignoreUntil.current) {
+          setCurrent(info);
+          noteProgress(info);
+        }
         return;
       }
       if (!info || typeof info !== "object") return;
@@ -151,6 +169,7 @@ export default function Radio({
       if (videoId && videoId !== nowRef.current) setNowId(videoId);
       if (typeof info.currentTime === "number" && Date.now() >= ignoreUntil.current) {
         setCurrent(info.currentTime);
+        noteProgress(info.currentTime);
       }
     }
     window.addEventListener("message", onMessage);
@@ -159,7 +178,32 @@ export default function Radio({
       window.removeEventListener("message", onMessage);
       window.clearInterval(videoTimer);
     };
-  }, [soundOn, queueKey]);
+  }, [soundOn, queueKey, forcedMute]);
+
+  useEffect(() => {
+    progressed.current = false;
+    nudged.current = false;
+    if (!soundOn || forcedMute) return;
+    const nudge = window.setTimeout(() => {
+      if (progressed.current) return;
+      const frame = frameRef.current;
+      if (!frame) return;
+      nudged.current = true;
+      nudgeAt.current = performance.now();
+      armPlayer(frame);
+      postToPlayer(frame, "mute");
+      postToPlayer(frame, "playVideo");
+    }, 2500);
+    const fallback = window.setTimeout(() => {
+      if (progressed.current) return;
+      setForcedMute(true);
+      onSoundBlockedRef.current();
+    }, 5000);
+    return () => {
+      window.clearTimeout(nudge);
+      window.clearTimeout(fallback);
+    };
+  }, [queueKey, soundOn, forcedMute]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -185,13 +229,36 @@ export default function Radio({
 
   seekTo.current = seek;
 
+  applySound.current = (on) => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    armPlayer(frame);
+    postToPlayer(frame, on ? "unMute" : "mute");
+    postToPlayer(frame, "playVideo");
+  };
+
+  function noteProgress(seconds: number) {
+    if (seconds <= 0.25) return;
+    const wasNudged = nudged.current;
+    progressed.current = true;
+    nudged.current = false;
+    if (!wasNudged) return;
+    const sinceNudge = (performance.now() - nudgeAt.current) / 1000;
+    if (seconds > sinceNudge + 0.4) {
+      postToPlayer(frameRef.current, "unMute");
+      postToPlayer(frameRef.current, "playVideo");
+      return;
+    }
+    onSoundBlockedRef.current();
+  }
+
   const kicker =
     mode === "shuffle"
       ? "Shuffle library"
       : mode === "playlist"
         ? "Playlist"
         : now?.videoId === latestQueue[0]?.videoId
-          ? "Latest addition to the crate"
+          ? "Track of the week"
           : "On the radio";
 
   return (
@@ -205,6 +272,7 @@ export default function Radio({
               src={youtubePlaylistEmbed(
                 queue.map((item) => item.videoId),
                 window.location.origin,
+                forcedMute,
               )}
               allow="autoplay; encrypted-media; picture-in-picture"
               referrerPolicy="strict-origin-when-cross-origin"
@@ -214,7 +282,7 @@ export default function Radio({
                 if (!frame) return;
                 armPlayer(frame);
                 postToPlayer(frame, soundOn ? "unMute" : "mute");
-                if (soundOn) postToPlayer(frame, "playVideo");
+                postToPlayer(frame, "playVideo");
               }}
             />
             <div className="header-radio-copy">

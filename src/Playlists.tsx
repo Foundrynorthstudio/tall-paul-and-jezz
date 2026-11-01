@@ -1,4 +1,5 @@
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { paulPlaylists } from "./data/paul";
 import {
   comparePlaylistNames,
@@ -6,6 +7,7 @@ import {
   inPlaylistMenu,
   playlistMenus,
   playlistNameKey,
+  VIBE_IDS,
   youtubeVideoId,
   type PlaylistMenu,
   type SpotifyPlaylist,
@@ -79,6 +81,8 @@ export function Playlists({
   onSeek: (seconds: number) => void;
   onPlayTrack: (track: RadioTrack, startSeconds?: number) => void;
 }) {
+  const [params] = useSearchParams();
+  const crateId = params.get("crate") ?? "";
   const [person, setPerson] = useState<Person>("jezz");
   const [menu, setMenu] = useState<PlaylistMenu>("chill");
   const [activeId, setActiveId] = useState("");
@@ -100,6 +104,22 @@ export function Playlists({
     person === "jezz" && needle
       ? grouped.filter((playlist) => playlistNameKey(playlist.name).includes(needle))
       : grouped;
+
+  useEffect(() => {
+    if (!crateId) return;
+    if (crateId === DUO_ID) {
+      setPerson("duo");
+      setActiveId(DUO_ID);
+    } else if (VIBE_IDS.has(crateId)) {
+      setPerson("jezz");
+      setMenu("vibe");
+      setActiveId(crateId);
+    }
+    const frame = requestAnimationFrame(() => {
+      document.querySelector(".crate.is-open")?.scrollIntoView({ block: "start" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [crateId]);
 
   function chooseMenu(next: PlaylistMenu) {
     setPerson("jezz");

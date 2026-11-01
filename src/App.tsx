@@ -7,13 +7,13 @@ import { Playlists } from "./Playlists";
 import MerchPage from "./pages/Merch";
 import SetsPage from "./pages/Sets";
 import TicketsPage from "./pages/Tickets";
+import WeekPage from "./pages/Week";
 import Radio, { type RadioTrack } from "./Radio";
 import { useStored, type BagLine } from "./storage";
 
 const NAV = [
-  { to: "/gigs", label: "Gigs" },
-  { to: "/tickets", label: "Tickets" },
   { to: "/playlists", label: "Playlists" },
+  { to: "/week", label: "Tracks of the week" },
   { to: "/about", label: "About" },
   { to: "/sets", label: "Set lists" },
   { to: "/merch", label: "Merch" },
@@ -27,6 +27,7 @@ export default function App() {
   const [nowSeconds, setNowSeconds] = useState(0);
   const playTrack = useRef<(track: RadioTrack, startSeconds?: number) => void>(() => {});
   const seekTo = useRef<(seconds: number) => void>(() => {});
+  const applySound = useRef<(on: boolean) => void>(() => {});
   const { pathname, hash } = useLocation();
   const bagCount = bag.reduce((sum, line) => sum + line.qty, 0);
 
@@ -58,8 +59,7 @@ export default function App() {
           <div className="header-tools">
             <nav id="site-nav" className={menuOpen ? "nav-links is-open" : "nav-links"}>
               {NAV.map((item) => {
-                const current =
-                  pathname === item.to || (item.to === "/tickets" && pathname.startsWith("/tickets"));
+                const current = pathname === item.to;
                 return (
                   <Link
                     key={item.label}
@@ -87,7 +87,11 @@ export default function App() {
               type="button"
               className={soundOn ? "sound-btn is-on" : "sound-btn"}
               aria-pressed={soundOn}
-              onClick={() => setSoundOn((on) => !on)}
+              onClick={() => {
+                const next = !soundOn;
+                setSoundOn(next);
+                applySound.current(next);
+              }}
             >
               {soundOn ? "Sound on" : "Sound off"}
             </button>
@@ -97,6 +101,8 @@ export default function App() {
           soundOn={soundOn}
           playTrack={playTrack}
           seekTo={seekTo}
+          applySound={applySound}
+          onSoundBlocked={() => setSoundOn(false)}
           onNow={setNowVideoId}
           onTime={setNowSeconds}
         />
@@ -131,6 +137,15 @@ export default function App() {
             element={
               <About
                 profileUrl={spotifyProfileUrl}
+                nowVideoId={nowVideoId}
+                onPlayTrack={(track, startSeconds) => playTrack.current(track, startSeconds)}
+              />
+            }
+          />
+          <Route
+            path="/week"
+            element={
+              <WeekPage
                 nowVideoId={nowVideoId}
                 onPlayTrack={(track, startSeconds) => playTrack.current(track, startSeconds)}
               />
