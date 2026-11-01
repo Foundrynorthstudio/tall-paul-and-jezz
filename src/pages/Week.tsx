@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
-import { DUO_ID, latestVibe, playlists, youtubeVideoId } from "../data/playlists";
+import { paulPlaylists } from "../data/paul";
+import { DUO_ID, DUO_NAME, latestVibe, youtubeVideoId } from "../data/playlists";
+import { tracksFor, type CrateTrack } from "../data/tracks";
 import { weekFeature, type WeekFeature } from "../data/week";
 import type { RadioTrack } from "../Radio";
 
@@ -8,7 +10,7 @@ export default function WeekPage({
   onPlayTrack,
 }: {
   nowVideoId: string;
-  onPlayTrack: (track: RadioTrack, startSeconds?: number) => void;
+  onPlayTrack: (track: RadioTrack, startSeconds?: number, queue?: RadioTrack[]) => void;
 }) {
   return (
     <section className="block" aria-labelledby="week-title">
@@ -19,13 +21,45 @@ export default function WeekPage({
   );
 }
 
+function playlistFor(pick: WeekFeature): { id: string; name: string; tracks: CrateTrack[] } | null {
+  if (pick.slot === "duo") return { id: DUO_ID, name: DUO_NAME, tracks: tracksFor(DUO_ID) };
+  if (pick.slot === "jezz") {
+    const vibe = latestVibe();
+    return vibe ? { id: vibe.id, name: vibe.name, tracks: tracksFor(vibe.id) } : null;
+  }
+  const videoId = youtubeVideoId(pick.track.youtubeMusicUrl);
+  const paul = paulPlaylists.find((playlist) =>
+    playlist.tracks.some((track) => youtubeVideoId(track.youtubeMusicUrl) === videoId),
+  );
+  return paul ? { id: paul.id, name: paul.name, tracks: paul.tracks } : null;
+}
+
+function queueFor(playlist: { id: string; name: string; tracks: CrateTrack[] }): RadioTrack[] {
+  return playlist.tracks.flatMap((track) => {
+    const videoId = youtubeVideoId(track.youtubeMusicUrl);
+    if (!videoId) return [];
+    return [
+      {
+        videoId,
+        title: track.title,
+        artists: track.artists,
+        artwork: track.artwork,
+        crate: playlist.name,
+        playlistId: playlist.id,
+        trackId: track.id,
+        durationMs: track.durationMs,
+      },
+    ];
+  });
+}
+
 export function WeekBoard({
   nowVideoId,
   onPlayTrack,
   heading = "h2",
 }: {
   nowVideoId: string;
-  onPlayTrack: (track: RadioTrack, startSeconds?: number) => void;
+  onPlayTrack: (track: RadioTrack, startSeconds?: number, queue?: RadioTrack[]) => void;
   heading?: "h1" | "h2";
 }) {
   const picks = weekFeature();
@@ -36,14 +70,19 @@ export function WeekBoard({
   function play(pick: WeekFeature) {
     const videoId = youtubeVideoId(pick.track.youtubeMusicUrl);
     if (!videoId) return;
-    onPlayTrack({
+    const playlist = playlistFor(pick);
+    const queue = playlist ? queueFor(playlist) : [];
+    const radio = queue.find((item) => item.trackId === pick.track.id || item.videoId === videoId) ?? {
       videoId,
       title: pick.track.title,
       artists: pick.track.artists,
       artwork: pick.track.artwork,
-      crate: pick.crate,
+      crate: playlist?.name ?? pick.crate,
+      playlistId: playlist?.id,
+      trackId: pick.track.id,
       durationMs: pick.track.durationMs,
-    });
+    };
+    onPlayTrack(radio, undefined, queue);
   }
 
   if (!hero && rest.length === 0) return null;
@@ -134,7 +173,17 @@ function PickBody({
   return (
     <>
       <p className="kicker">Track of the week</p>
-      <h2 className="week-who">{pick.label}</h2>
+      <h2 className="week-who">
+        {pick.slot === "duo" ? (
+          <>
+            Tall Paul
+            <br />
+            <span className="and">and</span> Jezz
+          </>
+        ) : (
+          pick.label
+        )}
+      </h2>
       <button type="button" className="week-meta" onClick={onPlay}>
         <span className="track-title">{track.title}</span>
         {track.artists ? <span className="track-artists">{track.artists}</span> : null}
@@ -159,7 +208,7 @@ function PickBody({
         {pick.note ? <p>{pick.note}</p> : null}
       </div>
       <div className="week-field">
-        <h3>Listen-through with Paul</h3>
+        <h3>Listen-through with Tall Paul</h3>
         {pick.podcastUrl ? (
           <a href={pick.podcastUrl} target="_blank" rel="noreferrer">
             Listen
@@ -173,13 +222,12 @@ function PickBody({
 }
 
 function PlaylistButton({ slot }: { slot: WeekFeature["slot"] }) {
-  if (slot === "paul") return <p className="week-playlist is-tbc">Playlist TBC</p>;
-  const playlist =
-    slot === "duo" ? playlists.find((row) => row.id === DUO_ID) ?? null : latestVibe();
-  if (!playlist) return null;
+  const pick = weekFeature().find((item) => item.slot === slot);
+  const playlist = pick ? playlistFor(pick) : null;
+  if (!playlist) return <p className="week-playlist is-tbc">Playlist TBC</p>;
   return (
-    <Link className="week-playlist" to={`/playlists?crate=${playlist.id}`}>
-      {playlist.name}
+    <Link className="week-playlist" to={`/playlists?week=${playlist.id}`}>
+      {slot === "duo" ? DUO_NAME : playlist.name}
     </Link>
   );
 }

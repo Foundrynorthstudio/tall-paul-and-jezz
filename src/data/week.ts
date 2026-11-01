@@ -14,9 +14,9 @@ export type WeekPerson = keyof typeof weekTrackIds;
 export type WeekSlot = "duo" | WeekPerson;
 
 const labels: Record<WeekSlot, string> = {
-  duo: "Jezz and Paul",
+  duo: "Tall Paul and Jezz",
   jezz: "Jezz",
-  paul: "Paul",
+  paul: "Tall Paul",
 };
 
 const order: WeekPerson[] = ["paul", "jezz"];

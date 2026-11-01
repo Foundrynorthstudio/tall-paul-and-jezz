@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { youtubeVideoId } from "../data/playlists";
+import { paulYoutubeUrl } from "../data/paul";
+import { playlists, youtubeVideoId } from "../data/playlists";
 import { weekTrackIds } from "../data/week";
-import { trackById, type CrateTrack } from "../data/tracks";
+import { trackById, eachPlaylistTracks, tracksFor, type CrateTrack } from "../data/tracks";
 import type { RadioTrack } from "../Radio";
 import { WeekBoard } from "./Week";
 
@@ -10,7 +11,7 @@ export default function Home({
   onPlayTrack,
 }: {
   nowVideoId: string;
-  onPlayTrack: (track: RadioTrack, startSeconds?: number) => void;
+  onPlayTrack: (track: RadioTrack, startSeconds?: number, queue?: RadioTrack[]) => void;
 }) {
   return (
     <>
@@ -61,7 +62,7 @@ export function About({
 }: {
   profileUrl: string;
   nowVideoId: string;
-  onPlayTrack: (track: RadioTrack, startSeconds?: number) => void;
+  onPlayTrack: (track: RadioTrack, startSeconds?: number, queue?: RadioTrack[]) => void;
 }) {
   const ten = jezzTopTen();
   const listed = ten.filter((track): track is CrateTrack => track !== null);
@@ -81,7 +82,7 @@ export function About({
               Tall Paul <span className="and">and</span> Jezz
             </h3>
             <p>
-              House and techno. Jezz and Paul curate the crates. Fifty tracks apiece, and the best
+              House and techno. Tall Paul and Jezz curate the crates. Fifty tracks apiece, and the best
               rise to the top of the joint set.
             </p>
           </div>
@@ -93,9 +94,12 @@ export function About({
                 <img src="/brand/about-paul.jpg" alt="Tall Paul, silhouette with headphones around his neck." />
               </div>
               <div className="profile-body">
-                <p className="kicker">Paul</p>
+                <p className="kicker">Tall Paul</p>
                 <h3 className="profile-name">Tall Paul</h3>
-                <p>Paul builds his crates on YouTube Music.</p>
+                <p>Tall Paul builds his crates on YouTube Music.</p>
+                <a className="profile-link" href={paulYoutubeUrl}>
+                  Tall Paul on YouTube
+                </a>
               </div>
             </article>
           </div>
@@ -109,8 +113,8 @@ export function About({
                 <h3 className="profile-name">Jezz</h3>
                 <p>Jezz builds his crates on Spotify.</p>
                 <p>
-                  For me it&apos;s all about cutting mad shapes whilst being on the right side of
-                  fucked. I enjoy it myself, I enjoy it even more with friends. I listen to music to
+                  For me it&apos;s all about cutting mad shapes on the dance floor whilst being on the right side of
+                  f*cked. I enjoy it myself, I enjoy it even more with friends. I listen to music to
                   build playlists. Repeat, over and over, learn the track - the favourites become
                   memorised. Doom doom doom doom....Always with a big night out in mind when
                   listening. Glasgow is where I went clubbing as a student, and where I met Tall
@@ -190,6 +194,13 @@ const PRADA: CrateTrack = {
   timedNotes: [],
 };
 
+function playlistIdForTrack(id: string): string {
+  for (const { playlistId, tracks } of eachPlaylistTracks()) {
+    if (tracks.some((track) => track.id === id)) return playlistId;
+  }
+  return "";
+}
+
 function jezzTopTen(): (CrateTrack | null)[] {
   const crave = trackById(CRAVE_YOU_ID);
   const slots: (CrateTrack | null)[] = [
@@ -236,7 +247,7 @@ function TopCell({
   track: CrateTrack;
   rank: number;
   active: boolean;
-  onPlay: (track: RadioTrack) => void;
+  onPlay: (track: RadioTrack, startSeconds?: number, queue?: RadioTrack[]) => void;
 }) {
   const videoId = youtubeVideoId(track.youtubeMusicUrl);
   const copy = (
@@ -266,16 +277,37 @@ function TopCell({
         type="button"
         className={active ? "top-cell is-on" : "top-cell"}
         aria-pressed={active}
-        onClick={() =>
-          onPlay({
+        onClick={() => {
+          const playlistId = playlistIdForTrack(track.id);
+          const playlist = playlists.find((row) => row.id === playlistId);
+          const queue = (playlist ? tracksFor(playlist.id) : []).flatMap((item) => {
+            const id = youtubeVideoId(item.youtubeMusicUrl);
+            if (!id) return [];
+            return [
+              {
+                videoId: id,
+                title: item.title,
+                artists: item.artists,
+                artwork: item.artwork,
+                crate: playlist?.name ?? "Top 10",
+                playlistId: playlist?.id,
+                trackId: item.id,
+                durationMs: item.durationMs,
+              },
+            ];
+          });
+          const radio = queue.find((item) => item.trackId === track.id) ?? {
             videoId,
             title: track.title,
             artists: track.artists,
             artwork: track.artwork,
-            crate: "Top 10",
+            crate: playlist?.name ?? "Top 10",
+            playlistId,
+            trackId: track.id,
             durationMs: track.durationMs,
-          })
-        }
+          };
+          onPlay(radio, undefined, queue);
+        }}
       >
         {copy}
       </button>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 export type TicketHold = { name: string; email: string; qty: number };
+export type TicketLine = { gigId: string; qty: number };
 export type BagLine = { merchId: string; qty: number; size: string | null };
 
 function readStore<T>(key: string, fallback: T): T {

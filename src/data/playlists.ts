@@ -82,8 +82,9 @@ export const HARDER_ID = "0cfpHzBak520bKWPZ0WC0g";
 /** Techno and Techno 02, pinned by id so a title change cannot drop them. */
 const HARDEST_IDS = new Set(["11jr4LwhvPyxIWoXuPZuGB", "1SIjBFgf2R23VJF9fn0zPz"]);
 
-/** Shared site playlist, Jezz and Tall Paul. */
+/** Shared site playlist, shown as Tall Paul and Jezz. */
 export const DUO_ID = "3edR4o6bZ40CIgM2BRZqmv";
+export const DUO_NAME = "Tall Paul and Jezz";
 
 /** Highest numbered Vibe crate, so a new Vibe 08 becomes the latest on its own. */
 export function latestVibe(): SpotifyPlaylist | null {
@@ -128,7 +129,7 @@ export function youtubeEmbed(videoId: string): string {
   return youtubePlaylistEmbed([videoId]);
 }
 
-/** One on-site player for a whole crate. `loop` restarts after the last video. */
+/** One on-site player for a whole crate. Looping is controlled from the radio. */
 export function youtubePlaylistEmbed(videoIds: string[], origin?: string, muted = false): string {
   const ids = videoIds.filter(Boolean);
   const first = ids[0];
@@ -137,7 +138,6 @@ export function youtubePlaylistEmbed(videoIds: string[], origin?: string, muted 
     autoplay: "1",
     rel: "0",
     playsinline: "1",
-    loop: "1",
     enablejsapi: "1",
     playlist: ids.join(","),
   });

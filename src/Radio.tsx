@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { DUO_ID, playlists, youtubePlaylistEmbed, youtubeVideoId } from "./data/playlists";
+import { Link } from "react-router-dom";
+import { DUO_ID, DUO_NAME, playlists, youtubePlaylistEmbed, youtubeVideoId } from "./data/playlists";
 import { eachPlaylistTracks, trackById, tracksFor } from "./data/tracks";
 import { duoWeekTrackId } from "./data/week";
 import { armPlayer, postToPlayer, widgetMessage } from "./Playlists";
@@ -11,13 +12,16 @@ export type RadioTrack = {
   artists: string;
   artwork: string | null;
   crate: string;
+  playlistId?: string;
+  trackId?: string;
   durationMs: number;
 };
 
 type RadioMode = "latest" | "playlist" | "shuffle" | "track";
+type LoopMode = "off" | "song" | "playlist";
 
 function duoItems(): RadioTrack[] {
-  const crate = playlists.find((row) => row.id === DUO_ID)?.name ?? "Jezz and Tall Paul";
+  const crate = DUO_NAME;
   return tracksFor(DUO_ID).flatMap((track) => {
     const videoId = youtubeVideoId(track.youtubeMusicUrl);
     if (!videoId) return [];
@@ -28,6 +32,8 @@ function duoItems(): RadioTrack[] {
         artists: track.artists,
         artwork: track.artwork,
         crate,
+        playlistId: DUO_ID,
+        trackId: track.id,
         durationMs: track.durationMs,
       },
     ];
@@ -40,6 +46,16 @@ function weekFirst(items: RadioTrack[]): RadioTrack[] {
   const index = items.findIndex((item) => item.videoId === videoId);
   if (index <= 0) return items;
   return [items[index], ...items.filter((_, itemIndex) => itemIndex !== index)];
+}
+
+function holdVolume(frame: HTMLIFrameElement | null, on: boolean) {
+  if (!frame) return;
+  if (on) {
+    postToPlayer(frame, "unMute");
+    postToPlayer(frame, "setVolume", [100]);
+    return;
+  }
+  postToPlayer(frame, "mute");
 }
 
 function libraryItems(): RadioTrack[] {
@@ -57,6 +73,8 @@ function libraryItems(): RadioTrack[] {
         artists: track.artists,
         artwork: track.artwork,
         crate,
+        playlistId,
+        trackId: track.id,
         durationMs: track.durationMs,
       });
     }
@@ -73,54 +91,119 @@ export default function Radio({
   playTrack,
   seekTo,
   applySound,
-  onSoundBlocked,
   onNow,
   onTime,
 }: {
   soundOn: boolean;
-  playTrack: MutableRefObject<(track: RadioTrack, startSeconds?: number) => void>;
+  playTrack: MutableRefObject<(track: RadioTrack, startSeconds?: number, queue?: RadioTrack[]) => void>;
   seekTo: MutableRefObject<(seconds: number) => void>;
   applySound: MutableRefObject<(on: boolean) => void>;
-  onSoundBlocked: () => void;
   onNow: (videoId: string) => void;
   onTime: (seconds: number) => void;
 }) {
   const latestQueue = useMemo(() => weekFirst(duoItems()), []);
-  const playlistQueue = useMemo(() => duoItems(), []);
   const [mode, setMode] = useState<RadioMode>("latest");
   const [queue, setQueue] = useState(latestQueue);
+  const [startAt, setStartAt] = useState(0);
   const [nowId, setNowId] = useState(latestQueue[0]?.videoId ?? "");
   const [current, setCurrent] = useState(0);
-  const [forcedMute, setForcedMute] = useState(false);
+  const [loop, setLoop] = useState<LoopMode>("off");
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const picksRef = useRef<HTMLDivElement>(null);
   const nowRef = useRef(nowId);
   const ignoreUntil = useRef(0);
   const pendingStart = useRef<number | null>(null);
   const armStart = useRef<number | null>(null);
-  const progressed = useRef(false);
-  const nudged = useRef(false);
-  const nudgeAt = useRef(0);
-  const onSoundBlockedRef = useRef(onSoundBlocked);
+  const loopRef = useRef(loop);
+  const queueRef = useRef(latestQueue);
+  const loopSongRef = useRef("");
+  const goToRef = useRef<(index: number) => void>(() => {});
   nowRef.current = nowId;
-  onSoundBlockedRef.current = onSoundBlocked;
+  loopRef.current = loop;
   const now = queue.find((item) => item.videoId === nowId) ?? queue[0] ?? null;
-  const queueKey = `${mode}:${queue.map((item) => item.videoId).join(",")}`;
+  const embedQueue = startAt > 0 ? [...queue.slice(startAt), ...queue.slice(0, startAt)] : queue;
+  const queueKey = `${mode}:${embedQueue.map((item) => item.videoId).join(",")}`;
+  const place = queue.findIndex((item) => item.videoId === now?.videoId);
+  const position = place < 0 ? 1 : place + 1;
+  queueRef.current = queue;
+  const weekQueue = latestQueue.map((item) => item.videoId).join(",");
+  const onWeek =
+    queue.map((item) => item.videoId).join(",") === weekQueue && now?.videoId === latestQueue[0]?.videoId;
 
-  playTrack.current = (track, startSeconds) => {
+  playTrack.current = (track, startSeconds, playlist) => {
     if (!track.videoId) return;
+    const items = playlist && playlist.length > 0 ? playlist : [track];
+    const index = items.findIndex((item) => item.videoId === track.videoId);
+    const safeIndex = index < 0 ? 0 : index;
     const start = Math.max(0, startSeconds ?? 0);
-    if (track.videoId === nowRef.current) {
+    const sameList =
+      items.length === queue.length && items.every((item, itemIndex) => queue[itemIndex]?.videoId === item.videoId);
+    if (sameList && track.videoId === nowRef.current) {
       if (startSeconds != null) seek(start);
       return;
     }
     pendingStart.current = start;
     armStart.current = start;
     ignoreUntil.current = Date.now() + 1500;
-    setMode("track");
-    setQueue([track]);
-    setNowId(track.videoId);
+    if (!sameList) setQueue(items);
+    setStartAt(safeIndex);
+    setNowId(items[safeIndex]?.videoId ?? track.videoId);
     setCurrent(start);
+    setMode(items.length > 1 ? "playlist" : "track");
+    if (loopRef.current === "song") loopSongRef.current = items[safeIndex]?.videoId ?? track.videoId;
   };
+
+  function goTo(index: number) {
+    const items = queueRef.current;
+    if (items.length === 0) return;
+    const next = Math.max(0, Math.min(items.length - 1, index));
+    const item = items[next];
+    if (!item) return;
+    if (loopRef.current === "song") loopSongRef.current = item.videoId;
+    if (next === place) {
+      replay();
+      return;
+    }
+    ignoreUntil.current = Date.now() + 1500;
+    setNowId(item.videoId);
+    setCurrent(0);
+    if (next === startAt) {
+      postToPlayer(frameRef.current, "playVideoAt", [0]);
+      return;
+    }
+    pendingStart.current = 0;
+    armStart.current = null;
+    setStartAt(next);
+  }
+
+  goToRef.current = goTo;
+
+  function step(delta: number) {
+    const count = queue.length;
+    if (count === 0 || place < 0) return;
+    const next = place + delta;
+    if (loop === "playlist") {
+      goTo((next + count) % count);
+      return;
+    }
+    if (next < 0 || next >= count) return;
+    goTo(next);
+  }
+
+  function replay() {
+    ignoreUntil.current = Date.now() + 700;
+    setCurrent(0);
+    const frame = frameRef.current;
+    postToPlayer(frame, "seekTo", [0, true]);
+    postToPlayer(frame, "playVideo");
+  }
+
+  function cycleLoop() {
+    const next: LoopMode = loop === "off" ? "song" : loop === "song" ? "playlist" : "off";
+    if (next === "song") loopSongRef.current = nowRef.current;
+    setLoop(next);
+    postToPlayer(frameRef.current, "setLoop", [next === "playlist"]);
+  }
 
   useEffect(() => {
     onNow(nowId);
@@ -141,7 +224,7 @@ export default function Radio({
     if (!frame) return;
     function apply(target: HTMLIFrameElement, ready = false) {
       armPlayer(target);
-      postToPlayer(target, soundOn ? "unMute" : "mute");
+      holdVolume(target, soundOn);
       postToPlayer(target, "playVideo");
       if (ready && armStart.current != null && armStart.current > 0.25) {
         ignoreUntil.current = Date.now() + 1200;
@@ -156,20 +239,33 @@ export default function Radio({
       const data = widgetMessage(event.data);
       if (data?.event === "onReady") apply(frame, true);
       const info = data?.info;
-      if (data?.event === "onStateChange" && info === 1) progressed.current = true;
-      if (typeof info === "number" && Number.isFinite(info)) {
-        if (data?.event !== "onStateChange" && Date.now() >= ignoreUntil.current) {
-          setCurrent(info);
-          noteProgress(info);
+      if (data?.event === "onStateChange" && soundOn) holdVolume(frame, true);
+      if (data?.event === "onStateChange" && info === 0) {
+        if (loopRef.current === "song") {
+          ignoreUntil.current = Date.now() + 700;
+          postToPlayer(frame, "seekTo", [0, true]);
+          postToPlayer(frame, "playVideo");
+        } else if (loopRef.current === "playlist") {
+          const items = queueRef.current;
+          const at = items.findIndex((item) => item.videoId === nowRef.current);
+          if (at < 0 || at >= items.length - 1) goToRef.current(0);
         }
+      }
+      if (typeof info === "number" && Number.isFinite(info)) {
+        if (data?.event !== "onStateChange" && Date.now() >= ignoreUntil.current) setCurrent(info);
         return;
       }
       if (!info || typeof info !== "object") return;
       const videoId = typeof info.videoData?.video_id === "string" ? info.videoData.video_id : null;
-      if (videoId && videoId !== nowRef.current) setNowId(videoId);
+      if (videoId && videoId !== nowRef.current) {
+        if (loopRef.current === "song" && loopSongRef.current && videoId !== loopSongRef.current) {
+          postToPlayer(frame, "loadVideoById", [loopSongRef.current, 0]);
+          return;
+        }
+        setNowId(videoId);
+      }
       if (typeof info.currentTime === "number" && Date.now() >= ignoreUntil.current) {
         setCurrent(info.currentTime);
-        noteProgress(info.currentTime);
       }
     }
     window.addEventListener("message", onMessage);
@@ -178,32 +274,7 @@ export default function Radio({
       window.removeEventListener("message", onMessage);
       window.clearInterval(videoTimer);
     };
-  }, [soundOn, queueKey, forcedMute]);
-
-  useEffect(() => {
-    progressed.current = false;
-    nudged.current = false;
-    if (!soundOn || forcedMute) return;
-    const nudge = window.setTimeout(() => {
-      if (progressed.current) return;
-      const frame = frameRef.current;
-      if (!frame) return;
-      nudged.current = true;
-      nudgeAt.current = performance.now();
-      armPlayer(frame);
-      postToPlayer(frame, "mute");
-      postToPlayer(frame, "playVideo");
-    }, 2500);
-    const fallback = window.setTimeout(() => {
-      if (progressed.current) return;
-      setForcedMute(true);
-      onSoundBlockedRef.current();
-    }, 5000);
-    return () => {
-      window.clearTimeout(nudge);
-      window.clearTimeout(fallback);
-    };
-  }, [queueKey, soundOn, forcedMute]);
+  }, [soundOn, queueKey]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -212,11 +283,20 @@ export default function Radio({
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const currentPick = picksRef.current?.querySelector<HTMLElement>(".is-on");
+    const box = picksRef.current;
+    if (!currentPick || !box) return;
+    const left = currentPick.offsetLeft - box.clientWidth / 2 + currentPick.offsetWidth / 2;
+    box.scrollTo({ left: Math.max(0, left) });
+  }, [place, queueKey]);
+
   function load(next: RadioTrack[], nextMode: RadioMode) {
     pendingStart.current = null;
     armStart.current = null;
     setMode(nextMode);
     setQueue(next);
+    setStartAt(0);
     setNowId(next[0]?.videoId ?? "");
     setCurrent(0);
   }
@@ -233,33 +313,16 @@ export default function Radio({
     const frame = frameRef.current;
     if (!frame) return;
     armPlayer(frame);
-    postToPlayer(frame, on ? "unMute" : "mute");
+    holdVolume(frame, on);
     postToPlayer(frame, "playVideo");
   };
 
-  function noteProgress(seconds: number) {
-    if (seconds <= 0.25) return;
-    const wasNudged = nudged.current;
-    progressed.current = true;
-    nudged.current = false;
-    if (!wasNudged) return;
-    const sinceNudge = (performance.now() - nudgeAt.current) / 1000;
-    if (seconds > sinceNudge + 0.4) {
-      postToPlayer(frameRef.current, "unMute");
-      postToPlayer(frameRef.current, "playVideo");
-      return;
-    }
-    onSoundBlockedRef.current();
-  }
-
-  const kicker =
-    mode === "shuffle"
-      ? "Shuffle library"
-      : mode === "playlist"
-        ? "Playlist"
-        : now?.videoId === latestQueue[0]?.videoId
-          ? "Track of the week"
-          : "On the radio";
+  const kicker = mode === "shuffle" ? "Shuffle library" : onWeek ? "Track of the week" : "On the radio";
+  const playlistLabel = mode === "shuffle" ? "Shuffle library" : now?.crate || DUO_NAME;
+  const trackHref =
+    now?.playlistId && now.trackId
+      ? `/playlists?crate=${encodeURIComponent(now.playlistId)}&track=${encodeURIComponent(now.trackId)}`
+      : "";
 
   return (
     <div className="radio-dock">
@@ -270,9 +333,8 @@ export default function Radio({
               ref={frameRef}
               title={`${now.title} on YouTube`}
               src={youtubePlaylistEmbed(
-                queue.map((item) => item.videoId),
+                embedQueue.map((item) => item.videoId),
                 window.location.origin,
-                forcedMute,
               )}
               allow="autoplay; encrypted-media; picture-in-picture"
               referrerPolicy="strict-origin-when-cross-origin"
@@ -281,41 +343,96 @@ export default function Radio({
                 const frame = frameRef.current;
                 if (!frame) return;
                 armPlayer(frame);
-                postToPlayer(frame, soundOn ? "unMute" : "mute");
+                holdVolume(frame, soundOn);
                 postToPlayer(frame, "playVideo");
               }}
             />
             <div className="header-radio-copy">
+              <p className="playlist-player">
+                Playlist:{" "}
+                {playlistLabel === DUO_NAME ? (
+                  <>
+                    Tall Paul <span className="and">and</span> Jezz
+                  </>
+                ) : (
+                  playlistLabel
+                )}
+              </p>
               <p className="kicker header-radio-kicker">{kicker}</p>
-              <p className="header-radio-title">{now.title}</p>
+              <p className="header-radio-title">
+                {trackHref ? <Link to={trackHref}>{now.title}</Link> : now.title}
+              </p>
               <p className="header-radio-meta">
-                {now.artists}
-                {now.crate ? ` · ${now.crate}` : ""}
+                {trackHref ? (
+                  <Link to={trackHref}>
+                    {now.artists}
+                    {now.crate ? ` · ${now.crate}` : ""}
+                  </Link>
+                ) : (
+                  <>
+                    {now.artists}
+                    {now.crate ? ` · ${now.crate}` : ""}
+                  </>
+                )}
               </p>
             </div>
+            <div className="header-radio-wave">
+              <div className="header-radio-wave-main">
+                <WaveformSeek
+                  videoId={now.videoId}
+                  currentTime={current}
+                  duration={now.durationMs > 0 ? now.durationMs / 1000 : 0}
+                  onSeek={seek}
+                />
+                <p className="radio-count">
+                  {position} / {queue.length}
+                </p>
+              </div>
+              <div className="radio-picks" ref={picksRef} role="group" aria-label="Tracks in this playlist">
+                {queue.map((item, index) => (
+                  <button
+                    key={`${item.trackId ?? item.videoId}-${index}`}
+                    type="button"
+                    className={index === place ? "is-on" : ""}
+                    aria-current={index === place ? "true" : undefined}
+                    aria-label={`Play ${index + 1}, ${item.title}`}
+                    onClick={() => goTo(index)}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="radio-controls radio-actions">
-              <button type="button" onClick={() => postToPlayer(frameRef.current, "previousVideo")}>
-                Rewind
-              </button>
-              <button type="button" onClick={() => postToPlayer(frameRef.current, "nextVideo")}>
-                Skip
+              <button type="button" onClick={() => step(-1)} disabled={place <= 0 && loop !== "playlist"}>
+                Previous
               </button>
               <button
                 type="button"
-                className={mode === "playlist" ? "is-on" : ""}
-                aria-pressed={mode === "playlist"}
-                onClick={() =>
-                  load(
-                    mode === "playlist" ? latestQueue : playlistQueue,
-                    mode === "playlist" ? "latest" : "playlist",
-                  )
-                }
+                onClick={() => step(1)}
+                disabled={place < 0 || (place >= queue.length - 1 && loop !== "playlist")}
               >
-                Play playlist
+                Next
+              </button>
+              <button type="button" onClick={replay}>
+                <ReplayIcon />
+                Replay
               </button>
               <button
                 type="button"
-                className={mode === "shuffle" ? "is-on" : ""}
+                className={loop !== "off" ? "is-on" : ""}
+                aria-pressed={loop !== "off"}
+                aria-label={
+                  loop === "song" ? "Looping this song" : loop === "playlist" ? "Looping this playlist" : "Loop off"
+                }
+                onClick={cycleLoop}
+              >
+                <LoopIcon />
+                {loop === "song" ? "Loop song" : loop === "playlist" ? "Loop playlist" : "Loop"}
+              </button>
+              <button
+                type="button"
+                className={mode === "shuffle" ? "is-on radio-shuffle" : "radio-shuffle"}
                 aria-pressed={mode === "shuffle"}
                 onClick={() =>
                   load(mode === "shuffle" ? latestQueue : libraryItems(), mode === "shuffle" ? "latest" : "shuffle")
@@ -324,15 +441,39 @@ export default function Radio({
                 Shuffle library
               </button>
             </div>
-            <WaveformSeek
-              videoId={now.videoId}
-              currentTime={current}
-              duration={now.durationMs > 0 ? now.durationMs / 1000 : 0}
-              onSeek={seek}
-            />
           </div>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function ReplayIcon() {
+  return (
+    <svg className="radio-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 5V2L7 6l5 4V7a5 5 0 1 1-4.6 3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function LoopIcon() {
+  return (
+    <svg className="radio-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M17 7H8a4 4 0 0 0 0 8h1M7 17h9a4 4 0 0 0 0-8h-1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <path d="M14 4l3 3-3 3M10 20l-3-3 3-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

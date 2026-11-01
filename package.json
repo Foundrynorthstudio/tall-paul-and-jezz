@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "spotify": "node scripts/sync-spotify.mjs",
     "tracks": "node scripts/sync-tracks.mjs",
+    "paul": "node scripts/sync-paul.mjs",
+    "beatport": "node scripts/sync-beatport.mjs",
     "sync": "node scripts/sync-all.mjs"
   },
   "dependencies": {

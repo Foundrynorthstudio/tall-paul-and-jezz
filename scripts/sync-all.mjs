@@ -20,3 +20,5 @@ function run(script) {
 
 await run("scripts/sync-spotify.mjs");
 await run("scripts/sync-tracks.mjs");
+await run("scripts/sync-paul.mjs");
+await run("scripts/sync-beatport.mjs");

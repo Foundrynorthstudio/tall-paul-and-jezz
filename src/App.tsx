@@ -12,6 +12,7 @@ import Radio, { type RadioTrack } from "./Radio";
 import { useStored, type BagLine } from "./storage";
 
 const NAV = [
+  { to: "/gigs", label: "Gigs" },
   { to: "/playlists", label: "Playlists" },
   { to: "/week", label: "Tracks of the week" },
   { to: "/about", label: "About" },
@@ -25,7 +26,9 @@ export default function App() {
   const [soundOn, setSoundOn] = useState(true);
   const [nowVideoId, setNowVideoId] = useState("");
   const [nowSeconds, setNowSeconds] = useState(0);
-  const playTrack = useRef<(track: RadioTrack, startSeconds?: number) => void>(() => {});
+  const playTrack = useRef<(track: RadioTrack, startSeconds?: number, queue?: RadioTrack[]) => void>(
+    () => {},
+  );
   const seekTo = useRef<(seconds: number) => void>(() => {});
   const applySound = useRef<(on: boolean) => void>(() => {});
   const { pathname, hash } = useLocation();
@@ -102,7 +105,6 @@ export default function App() {
           playTrack={playTrack}
           seekTo={seekTo}
           applySound={applySound}
-          onSoundBlocked={() => setSoundOn(false)}
           onNow={setNowVideoId}
           onTime={setNowSeconds}
         />
@@ -115,7 +117,7 @@ export default function App() {
             element={
               <Home
                 nowVideoId={nowVideoId}
-                onPlayTrack={(track, startSeconds) => playTrack.current(track, startSeconds)}
+                onPlayTrack={(track, startSeconds, queue) => playTrack.current(track, startSeconds, queue)}
               />
             }
           />
@@ -128,7 +130,7 @@ export default function App() {
                 nowVideoId={nowVideoId}
                 nowSeconds={nowSeconds}
                 onSeek={(seconds) => seekTo.current(seconds)}
-                onPlayTrack={(track, startSeconds) => playTrack.current(track, startSeconds)}
+                onPlayTrack={(track, startSeconds, queue) => playTrack.current(track, startSeconds, queue)}
               />
             }
           />
@@ -138,7 +140,7 @@ export default function App() {
               <About
                 profileUrl={spotifyProfileUrl}
                 nowVideoId={nowVideoId}
-                onPlayTrack={(track, startSeconds) => playTrack.current(track, startSeconds)}
+                onPlayTrack={(track, startSeconds, queue) => playTrack.current(track, startSeconds, queue)}
               />
             }
           />
@@ -147,7 +149,7 @@ export default function App() {
             element={
               <WeekPage
                 nowVideoId={nowVideoId}
-                onPlayTrack={(track, startSeconds) => playTrack.current(track, startSeconds)}
+                onPlayTrack={(track, startSeconds, queue) => playTrack.current(track, startSeconds, queue)}
               />
             }
           />

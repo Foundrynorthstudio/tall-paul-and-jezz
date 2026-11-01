@@ -1,1 +1,122 @@
-[]
+[
+  {
+    "id": "PLMj05cXJtkhM",
+    "name": "Bassy bougie belters",
+    "url": "https://www.youtube.com/playlist?list=PLMj05cXJtkhM",
+    "count": 5,
+    "tracks": [
+      {
+        "id": "lYgmxJX-vws",
+        "title": "Never Eclipses (Blows Away Remake)",
+        "artists": "Jonasclean",
+        "durationMs": 244000,
+        "artwork": "https://i.ytimg.com/vi/lYgmxJX-vws/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=lYgmxJX-vws"
+      },
+      {
+        "id": "uwt1kaYKI-A",
+        "title": "Je Suis Music (Armand Van Helden Remix Edit)",
+        "artists": "Cerrone",
+        "durationMs": 217000,
+        "artwork": "https://i.ytimg.com/vi/uwt1kaYKI-A/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=uwt1kaYKI-A"
+      },
+      {
+        "id": "AfAL0dwlzdU",
+        "title": "On My Mind (Purple Disco Machine Remix)",
+        "artists": "Diplo",
+        "durationMs": 264000,
+        "artwork": "https://i.ytimg.com/vi/AfAL0dwlzdU/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=AfAL0dwlzdU"
+      },
+      {
+        "id": "QkQ0Cbwa9kU",
+        "title": "C'est Bon",
+        "artists": "Fulltone",
+        "durationMs": 477000,
+        "artwork": "https://i.ytimg.com/vi/QkQ0Cbwa9kU/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=QkQ0Cbwa9kU"
+      },
+      {
+        "id": "49Om_7K6-1o",
+        "title": "This Dance",
+        "artists": "KYRIL",
+        "durationMs": 200000,
+        "artwork": "https://i.ytimg.com/vi/49Om_7K6-1o/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=49Om_7K6-1o"
+      }
+    ]
+  },
+  {
+    "id": "PLEY-4I1iwKx0",
+    "name": "Sweet Darkness",
+    "url": "https://www.youtube.com/playlist?list=PLEY-4I1iwKx0",
+    "count": 8,
+    "tracks": [
+      {
+        "id": "XduzQHGQ-Ug",
+        "title": "Mansionair - Lose Yourself Again (Visualiser)",
+        "artists": "MansionairVEVO",
+        "durationMs": 262000,
+        "artwork": "https://i.ytimg.com/vi/XduzQHGQ-Ug/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=XduzQHGQ-Ug"
+      },
+      {
+        "id": "JbOz0sMLFko",
+        "title": "On My Knees",
+        "artists": "RÜFÜS DU SOL",
+        "durationMs": 262000,
+        "artwork": "https://i.ytimg.com/vi/JbOz0sMLFko/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=JbOz0sMLFko"
+      },
+      {
+        "id": "auVsSmu_GSs",
+        "title": "Disappear Again (Edit)",
+        "artists": "Jan Blomqvist",
+        "durationMs": 193000,
+        "artwork": "https://i.ytimg.com/vi/auVsSmu_GSs/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=auVsSmu_GSs"
+      },
+      {
+        "id": "1e8mzCW0nlU",
+        "title": "Juno Love",
+        "artists": "Nico Morano",
+        "durationMs": 447000,
+        "artwork": "https://i.ytimg.com/vi/1e8mzCW0nlU/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=1e8mzCW0nlU"
+      },
+      {
+        "id": "5D7okovdvHM",
+        "title": "Afterglow",
+        "artists": "Klangkarussell",
+        "durationMs": 396000,
+        "artwork": "https://i.ytimg.com/vi/5D7okovdvHM/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=5D7okovdvHM"
+      },
+      {
+        "id": "g7rgXPUFMMY",
+        "title": "Intro You & Me Innerbloom (Astrality Edit)",
+        "artists": "Astrality",
+        "durationMs": 330000,
+        "artwork": "https://i.ytimg.com/vi/g7rgXPUFMMY/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=g7rgXPUFMMY"
+      },
+      {
+        "id": "xBZb6R3R8FE",
+        "title": "Wind Blows",
+        "artists": "Frances go",
+        "durationMs": 129000,
+        "artwork": "https://i.ytimg.com/vi/xBZb6R3R8FE/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=xBZb6R3R8FE"
+      },
+      {
+        "id": "4-JCQLywKhs",
+        "title": "What You Running From",
+        "artists": "Monolink",
+        "durationMs": 222000,
+        "artwork": "https://i.ytimg.com/vi/4-JCQLywKhs/maxresdefault.jpg",
+        "youtubeMusicUrl": "https://www.youtube.com/watch?v=4-JCQLywKhs"
+      }
+    ]
+  }
+]

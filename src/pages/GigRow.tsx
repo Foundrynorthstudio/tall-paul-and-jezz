@@ -1,12 +1,12 @@
-import { Link } from "react-router-dom";
 import type { Gig } from "../data/gigs";
 
-export function GigRow({ gig, selected }: { gig: Gig; selected: boolean }) {
+export function GigRow({ gig, selected, onSelect }: { gig: Gig; selected: boolean; onSelect: () => void }) {
   return (
-    <Link
-      to={`/tickets/${gig.id}`}
+    <button
+      type="button"
       className={selected ? "gig is-on" : "gig"}
-      aria-current={selected ? "page" : undefined}
+      aria-pressed={selected}
+      onClick={onSelect}
     >
       <span className="gig-date">
         {gig.month} {gig.day}
@@ -18,6 +18,6 @@ export function GigRow({ gig, selected }: { gig: Gig; selected: boolean }) {
           {gig.weekday}, {gig.place}
         </span>
       </span>
-    </Link>
+    </button>
   );
 }
