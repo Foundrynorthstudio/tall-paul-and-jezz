@@ -188,7 +188,7 @@ const BE_YOUR_GIRL: CrateTrack = {
   artwork: "https://i.scdn.co/image/ab67616d0000b2732c540a9b80a0a61d1541d6ab",
   spotifyUrl: "https://open.spotify.com/track/3zp3Mq8krAb1067UL94zJq",
   appleUrl: null,
-  youtubeMusicUrl: null,
+  youtubeMusicUrl: "https://music.youtube.com/watch?v=2OooRsERqyY",
   fieldNote: "",
   timedNotes: [],
 };
@@ -202,7 +202,7 @@ const PRADA: CrateTrack = {
   artwork: "https://i.scdn.co/image/ab67616d0000b273e4b7dccdfd54375ded9ccc5c",
   spotifyUrl: "https://open.spotify.com/track/59NraMJsLaMCVtwXTSia8i",
   appleUrl: null,
-  youtubeMusicUrl: null,
+  youtubeMusicUrl: "https://music.youtube.com/watch?v=zFMYL0XQ3lA",
   fieldNote: "",
   timedNotes: [],
 };
@@ -219,7 +219,7 @@ function jezzTopTen(): (CrateTrack | null)[] {
   const slots: (CrateTrack | null)[] = [
     trackById(weekTrackIds.jezz) ?? null,
     SPACE_COWBOY,
-    BE_YOUR_GIRL,
+    trackById(BE_YOUR_GIRL.id) ?? BE_YOUR_GIRL,
     trackById(CHANGE_ID) ?? null,
     trackById(RIP_IT_UP_ID) ?? null,
     trackById(NEVER_B_MINE_ID) ?? null,
