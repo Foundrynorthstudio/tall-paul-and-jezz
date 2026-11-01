@@ -6,6 +6,8 @@ import {
   comparePlaylistNames,
   DUO_ID,
   DUO_NAME,
+  DUO_WEEK_ID,
+  JEZZ_WEEK_ID,
   inPlaylistMenu,
   latestVibe,
   playlistMenus,
@@ -107,11 +109,11 @@ export function Playlists({
     linkedJezz && crateId !== DUO_ID ? menuFor(linkedJezz) : "vibe",
   );
   const [activeId, setActiveId] = useState(
-    weekId || !crateId || linkedPaul || crateId === DUO_ID ? "" : crateId,
+    weekId || !crateId || linkedPaul || crateId === DUO_WEEK_ID ? "" : crateId,
   );
   const [weekOpen, setWeekOpen] = useState<{ id: string; trackId: string } | null>(() => {
     if (weekId) return weekHeaderOpen(weekId);
-    if (!crateId || crateId === DUO_ID) return sharedWeekOpen(crateId === DUO_ID ? linkedTrackId : "");
+    if (!crateId || crateId === DUO_WEEK_ID) return sharedWeekOpen(crateId === DUO_WEEK_ID ? linkedTrackId : "");
     return null;
   });
   const [query, setQuery] = useState("");
@@ -145,7 +147,7 @@ export function Playlists({
       setPerson("paul");
       return;
     }
-    if (crateId === DUO_ID) {
+    if (crateId === DUO_WEEK_ID) {
       setWeekOpen(sharedWeekOpen(linkedTrackId));
       setActiveId("");
       const frame = requestAnimationFrame(scrollWeekTile);
@@ -171,7 +173,7 @@ export function Playlists({
       return () => cancelAnimationFrame(frame);
     }
     if (crateId) return;
-    setWeekOpen((current) => (current?.id === DUO_ID ? current : sharedWeekOpen()));
+    setWeekOpen((current) => (current?.id === DUO_WEEK_ID ? current : sharedWeekOpen()));
   }, [crateId, weekId]);
 
   useEffect(() => {
@@ -390,7 +392,7 @@ function scrollWeekTile() {
 }
 
 function sharedWeekOpen(trackId = ""): { id: string; trackId: string } | null {
-  const tracks = tracksFor(DUO_ID);
+  const tracks = tracksFor(DUO_WEEK_ID);
   const linked = trackId ? tracks.find((track) => track.id === trackId) : null;
   const featured = weekFeature().find((pick) => pick.slot === "duo")?.track;
   const featuredVideo = featured ? youtubeVideoId(featured.youtubeMusicUrl) : null;
@@ -400,11 +402,11 @@ function sharedWeekOpen(trackId = ""): { id: string; trackId: string } | null {
       (item) => featured && (item.id === featured.id || youtubeVideoId(item.youtubeMusicUrl) === featuredVideo),
     ) ??
     tracks[0];
-  return track ? { id: DUO_ID, trackId: track.id } : null;
+  return track ? { id: DUO_WEEK_ID, trackId: track.id } : null;
 }
 
 function weekHeaderOpen(id: string, trackId = ""): { id: string; trackId: string } | null {
-  if (id === DUO_ID) return sharedWeekOpen(trackId);
+  if (id === DUO_WEEK_ID) return sharedWeekOpen(trackId);
   const paul = paulPlaylists.find((playlist) => playlist.id === id);
   const tracks = paul ? paul.tracks : tracksFor(id);
   const linked = trackId ? tracks.find((track) => track.id === trackId) : null;
@@ -420,8 +422,8 @@ function weekHeaderOpen(id: string, trackId = ""): { id: string; trackId: string
 }
 
 function weekPlaylistId(pick: WeekFeature): string {
-  if (pick.slot === "duo") return DUO_ID;
-  if (pick.slot === "jezz") return latestVibe()?.id ?? "";
+  if (pick.slot === "duo") return DUO_WEEK_ID;
+  if (pick.slot === "jezz") return JEZZ_WEEK_ID;
   return paulWeekPlaylist()?.id ?? "";
 }
 
@@ -485,8 +487,8 @@ function WeekPlaylists({
   const picks = weekFeature();
   const hero = picks.find((pick) => pick.slot === "duo") ?? null;
   const rest = picks.filter((pick) => pick.slot !== "duo");
-  const duo = rows.find((playlist) => playlist.id === DUO_ID) ?? null;
-  const jezzPlaylist = latestVibe();
+  const duo = rows.find((playlist) => playlist.id === DUO_WEEK_ID) ?? null;
+  const jezzPlaylist = rows.find((playlist) => playlist.id === JEZZ_WEEK_ID) ?? null;
 
   function playlistFor(slot: WeekSlot): { playlist: SpotifyPlaylist; tracks?: CrateTrack[] } | null {
     if (slot === "duo" && duo) return { playlist: duo };

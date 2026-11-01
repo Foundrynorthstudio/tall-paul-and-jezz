@@ -86,6 +86,10 @@ const HARDEST_IDS = new Set(["11jr4LwhvPyxIWoXuPZuGB", "1SIjBFgf2R23VJF9fn0zPz"]
 export const DUO_ID = "3edR4o6bZ40CIgM2BRZqmv";
 export const DUO_NAME = "Tall Paul and Jezz";
 
+/** Dedicated track-of-the-week crates, pinned by id. */
+export const DUO_WEEK_ID = "0S47OPMI7fvT0E2snUZHws";
+export const JEZZ_WEEK_ID = "5zYbGTmFiUSwxOOUSwWLsl";
+
 /** Highest numbered Vibe crate, so a new Vibe 08 becomes the latest on its own. */
 export function latestVibe(): SpotifyPlaylist | null {
   let best: SpotifyPlaylist | null = null;

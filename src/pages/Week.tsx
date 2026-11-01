@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { paulPlaylists } from "../data/paul";
-import { DUO_ID, DUO_NAME, latestVibe, youtubeVideoId } from "../data/playlists";
+import { DUO_NAME, DUO_WEEK_ID, JEZZ_WEEK_ID, playlists, youtubeVideoId } from "../data/playlists";
 import { tracksFor, type CrateTrack } from "../data/tracks";
 import { weekFeature, type WeekFeature } from "../data/week";
 import type { RadioTrack } from "../Radio";
@@ -22,10 +22,10 @@ export default function WeekPage({
 }
 
 function playlistFor(pick: WeekFeature): { id: string; name: string; tracks: CrateTrack[] } | null {
-  if (pick.slot === "duo") return { id: DUO_ID, name: DUO_NAME, tracks: tracksFor(DUO_ID) };
-  if (pick.slot === "jezz") {
-    const vibe = latestVibe();
-    return vibe ? { id: vibe.id, name: vibe.name, tracks: tracksFor(vibe.id) } : null;
+  const weekId = pick.slot === "duo" ? DUO_WEEK_ID : pick.slot === "jezz" ? JEZZ_WEEK_ID : "";
+  if (weekId) {
+    const playlist = playlists.find((row) => row.id === weekId);
+    return playlist ? { id: playlist.id, name: playlist.name, tracks: tracksFor(playlist.id) } : null;
   }
   const videoId = youtubeVideoId(pick.track.youtubeMusicUrl);
   const paul = paulPlaylists.find((playlist) =>

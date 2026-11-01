@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { Link } from "react-router-dom";
-import { DUO_ID, DUO_NAME, playlists, youtubePlaylistEmbed, youtubeVideoId } from "./data/playlists";
+import { DUO_NAME, DUO_WEEK_ID, playlists, youtubePlaylistEmbed, youtubeVideoId } from "./data/playlists";
 import { eachPlaylistTracks, trackById, tracksFor } from "./data/tracks";
 import { duoWeekTrackId } from "./data/week";
 import { armPlayer, postToPlayer, widgetMessage } from "./Playlists";
@@ -22,7 +22,7 @@ type LoopMode = "off" | "song" | "playlist";
 
 function duoItems(): RadioTrack[] {
   const crate = DUO_NAME;
-  return tracksFor(DUO_ID).flatMap((track) => {
+  return tracksFor(DUO_WEEK_ID).flatMap((track) => {
     const videoId = youtubeVideoId(track.youtubeMusicUrl);
     if (!videoId) return [];
     return [
@@ -32,7 +32,7 @@ function duoItems(): RadioTrack[] {
         artists: track.artists,
         artwork: track.artwork,
         crate,
-        playlistId: DUO_ID,
+        playlistId: DUO_WEEK_ID,
         trackId: track.id,
         durationMs: track.durationMs,
       },
