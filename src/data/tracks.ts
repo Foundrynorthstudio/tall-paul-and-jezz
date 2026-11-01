@@ -1,4 +1,5 @@
 import notesFile from "./field-notes.json";
+import { DUO_WEEK_ID, JEZZ_WEEK_ID } from "./playlists";
 import trackFile from "./tracks.json";
 
 /** Spotify track id. Later likes and comments key on this, not on a service URL. */
@@ -76,8 +77,10 @@ export function trackById(id: string): CrateTrack | undefined {
   return undefined;
 }
 
+const newestFirst = new Set<string>([DUO_WEEK_ID, JEZZ_WEEK_ID]);
+
 export function tracksFor(playlistId: string): CrateTrack[] {
-  return (catalog.playlists?.[playlistId] ?? []).flatMap((track) => {
+  const rows = (catalog.playlists?.[playlistId] ?? []).flatMap((track) => {
     const id = track.id?.trim();
     if (!id) return [];
     const { fieldNote, timedNotes } = readNotes(notes[id]);
@@ -97,4 +100,5 @@ export function tracksFor(playlistId: string): CrateTrack[] {
       },
     ];
   });
+  return newestFirst.has(playlistId) ? rows.reverse() : rows;
 }

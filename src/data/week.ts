@@ -1,14 +1,14 @@
-import { playlists } from "./playlists";
-import { eachPlaylistTracks, type CrateTrack } from "./tracks";
+import { DUO_WEEK_ID, JEZZ_WEEK_ID, playlists } from "./playlists";
+import { eachPlaylistTracks, tracksFor, type CrateTrack } from "./tracks";
 
-/** Spotify track ids. An empty id omits that card. */
+/** Spotify track ids. An empty id omits that card. The newest week-playlist track leads. */
 export const weekTrackIds = {
-  jezz: "7K4u8Fo2Govm3aCz6y8Lsw",
+  jezz: tracksFor(JEZZ_WEEK_ID)[0]?.id ?? "",
   paul: "0fOmDYu6WE8hKwMlYPZpal",
 } as const;
 
-/** Jezz and Paul track of the week. The radio opens on this. */
-export const duoWeekTrackId = "6PHbD1AEcL1eCsQz3om9CJ";
+/** Tall Paul and Jezz track of the week. The radio opens on this. */
+export const duoWeekTrackId = tracksFor(DUO_WEEK_ID)[0]?.id ?? "";
 
 export type WeekPerson = keyof typeof weekTrackIds;
 export type WeekSlot = "duo" | WeekPerson;
