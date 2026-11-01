@@ -118,6 +118,7 @@ export default function Radio({
   const queueRef = useRef(latestQueue);
   const loopSongRef = useRef("");
   const goToRef = useRef<(index: number) => void>(() => {});
+  const brokenRef = useRef(new Set<string>());
   nowRef.current = nowId;
   loopRef.current = loop;
   const now = queue.find((item) => item.videoId === nowId) ?? queue[0] ?? null;
@@ -232,13 +233,30 @@ export default function Radio({
         armStart.current = null;
       }
     }
+    brokenRef.current.clear();
     apply(frame);
+    function skipBroken(videoId: string) {
+      if (!videoId || brokenRef.current.has(videoId)) return;
+      brokenRef.current.add(videoId);
+      const items = queueRef.current;
+      const at = items.findIndex((item) => item.videoId === videoId);
+      let next = items.findIndex((item, index) => index > at && !brokenRef.current.has(item.videoId));
+      if (next < 0 && loopRef.current === "playlist") {
+        next = items.findIndex((item) => !brokenRef.current.has(item.videoId));
+      }
+      if (next >= 0 && items[next]?.videoId !== videoId) goToRef.current(next);
+    }
     function onMessage(event: MessageEvent) {
       if (event.origin !== "https://www.youtube-nocookie.com") return;
       if (event.source !== frame?.contentWindow) return;
       const data = widgetMessage(event.data);
       if (data?.event === "onReady") apply(frame, true);
       const info = data?.info;
+      if (data?.event === "onError") {
+        const code = typeof info === "number" ? info : 0;
+        if (code === 2 || code === 5 || code === 100 || code === 101 || code === 150) skipBroken(nowRef.current);
+        return;
+      }
       if (data?.event === "onStateChange" && soundOn) holdVolume(frame, true);
       if (data?.event === "onStateChange" && info === 0) {
         if (loopRef.current === "song") {

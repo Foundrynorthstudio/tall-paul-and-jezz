@@ -207,7 +207,10 @@ export default function WaveformSeek({
           />
         </svg>
       </div>
-      <p className="waveform-clock">{canSeek ? clock(shownSeconds) : "0:00"}</p>
+      <p className="waveform-clock">
+        {canSeek ? clock(shownSeconds) : "0:00"}
+        {canSeek ? ` / ${clock(duration)}` : ""}
+      </p>
       {noteText ? <p className="waveform-note">{noteText}</p> : null}
     </div>
   );
